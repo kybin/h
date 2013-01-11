@@ -1,0 +1,28 @@
+@project
+{
+common
+	reference
+	camera
+	geometry
+	bg
+	env
+work
+output
+}
+
+@shot
+{
+houdini
+	camera
+	geometry
+	bgimage
+	shadow
+maya
+}
+
+@out
+{
+v01
+precomp
+	v01
+}
