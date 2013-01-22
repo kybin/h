@@ -19,6 +19,11 @@ import env
 import filebox
 import copy
 
+class shotmanager():
+	
+
+
+
 def main():
 	status = {}
 	status = globalStatus(status)
