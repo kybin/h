@@ -31,7 +31,13 @@ class path:
     def existParentDir(self):
         return os.path.isdir(self.parentdir)
 
-        
+def unixpath(inputpath):
+    return inputpath.replace('\\', '/')
+
+def versioncut(filename):
+    filename = re.sub('.?v?\d*.\w+$', '', filename)
+    return filename
+
 def createdir(inputpath):
     if '/' in inputpath:
         filepath = filebox.path(inputpath)
@@ -48,10 +54,10 @@ def opendir(path):
         pass
 
 
-def findMarkerArea(folderfile, markername):
+def findMarkerArea(treefile, markername):
     ''' It reads folder tree file. and make that tree in a target directory '''
     
-    f = open(folderfile)
+    f = open(treefile)
     lines = f.readlines()
     f.close()
 
@@ -128,8 +134,6 @@ def makeTree(targetDir, marker, dirTreeFile='T:/03_RnD_server/Project/__setting_
             #return False
         ParseTree(targetDir, directoryList)
 
-def unixpath(inputpath):
-    return inputpath.replace('\\', '/')
 
 def incBackup(inputpath, backupDirectory ='backup', backupName=None):
     # input : file path for backup
