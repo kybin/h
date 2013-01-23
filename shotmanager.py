@@ -18,11 +18,99 @@ import os
 import env
 import filebox
 import copy
+from collections import defaultdict
+class shotdata:
+	def __init__(self):
+		self.version = '0.01'
+		self.part = 'fx'
+		self.user = 'yongbin'
 
-class shotmanager():
+		self.rootpath = env.path().ProjectRoot
+		self.position = []
+		self.workdir = self.rootpath
+		self.software = {
+						'houdini':{'dir':'houdini', 'exe':'hip'}, 
+						'maya':{'dir':'maya/scenes', 'exe':['ma', 'mb']}
+						'max':{'dir':'max', 'exe':'max'}
+						}
+		# self.struct = None
+		self.mysoft = 'houdini'
+		self.structfile = '.showStruct'
+
+	def resetenv(self):
+		# self.show = None
+		# self.seq = None
+		# self.scene = None
+		# self.shot = None
+		# self.software = self.software[self.mysoft]['dir']
+		# self.task = ''
+		self.names = {'show':None, 'seq':None, 'scene':None, 'shot':None, 'software':mysoftdir, 'task':''}
+
+	def update(self):
+		''' update status : workdir, dirlists ... '''
+		p = self.position
+		if len(p) == 0:
+			reset()
+		if len(p) == 1:
+			updateShow()
+			updateStruct()
+		updateDir()
+		updateItems()
+
+	def updateShow(self):
+		self.show = self.position[0]
+
+	def updateStruct(self):
+		filepath = '/'.join([self.rootpath, self.show, self.structfile])
+		# 4 main struct is 'show', 'seq', 'scene', 'shot'. but some of this can be missing.
+		with open(filepath) as f:
+			mainStruct = f.readline().strip('\n').split('/')
+			for k in mainStruct:
+				self.names[k]=''
+		mainStruct = mainStruct.insert(mainStruct.index('show')+1, 'work')
+		subStruct = ['task', 'rev']
+		self.struct = mainStruct.extend(subStruct)
+
+	def updateDir(self):
+		dirlist = []
+		for val in self.position:
+			dirlist.append(val)
+			try:
+				dirlist.append(child[val])
+			except IndexError:
+				pass
+		self.workdir = self.rootpath + self.
+
+	def updateItems(self):
+		files = sorted(os.listdir(self.workdir))
+		files = [f for f in files if not (f.startswith('_') or f.startswith('.'))]
+
+		task = status['task']
+		shot = status['shot']
+
+		if :
+			files = [f for f in files if f.startswith(task)]
+			files = [f for f in files if os.path.isfile(workdir + '/' + f)]
+			files.reverse()
+		elif shot:
+			files = [f for f in files if os.path.isfile(workdir + '/' + f)]
+			files = list(set([filebox.versioncut(f) for f in files]))
+			files = sorted(files)	
+		else:
+			files = [f for f in files if os.path.isdir(workdir + '/' + f)]
+
+		return files
+
+
+	def move(self):
+		pass
+
+
 	
 
 
+
+class viewer:
 
 def main():
 	status = {}
@@ -55,7 +143,7 @@ def resetStatus(status):
 			status[s] = None
 
 	work = workdir(status)
-	items = workitem(status, work)	
+	items = workitem(status, work)
 
 	status['workdir'] = work
 	status['items'] = items
