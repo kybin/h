@@ -18,7 +18,9 @@ import os
 import env
 import filebox
 import copy
+import time
 from collections import defaultdict
+
 class shotdata:
 	def __init__(self):
 		self.version = '0.01'
@@ -30,280 +32,263 @@ class shotdata:
 		self.workdir = self.rootpath
 		self.software = {
 						'houdini':{'dir':'houdini', 'exe':'hip'}, 
-						'maya':{'dir':'maya/scenes', 'exe':['ma', 'mb']}
+						'maya':{'dir':'maya/scenes', 'exe':['ma', 'mb']},
 						'max':{'dir':'max', 'exe':'max'}
 						}
 		# self.struct = None
 		self.mysoft = 'houdini'
 		self.structfile = '.showStruct'
+		self.log = ''
+		self.reset()
 
-	def resetenv(self):
-		# self.show = None
-		# self.seq = None
-		# self.scene = None
-		# self.shot = None
-		# self.software = self.software[self.mysoft]['dir']
-		# self.task = ''
-		self.names = {'show':None, 'seq':None, 'scene':None, 'shot':None, 'software':mysoftdir, 'task':''}
+	def reset(self):
+		# 'None' in this dict means 'Not Use'
+		mysoftdir = self.software[self.mysoft]['dir']
+		self.replacements = {'show':None, 'seq':None, 'scene':None, 'shot':None, 'software':mysoftdir, 'task':''}
+		self.struct = ['show', 'work', 'seq', 'scene', 'shot', 'software', 'task']
+		print('quit reset')
 
 	def update(self):
 		''' update status : workdir, dirlists ... '''
 		p = self.position
 		if len(p) == 0:
-			reset()
+			self.reset()
 		if len(p) == 1:
-			updateShow()
-			updateStruct()
-		updateDir()
-		updateItems()
+			self.updateShow()
+			self.updateStruct()
+		# updatePosition()
+		self.updateDir()
+		self.updateItems()
+		print('quit update')
 
 	def updateShow(self):
 		self.show = self.position[0]
+		self.replacements['show'] = self.position[0]
+		print('quit updateShow')
 
 	def updateStruct(self):
+		'''when our position arrives at 'show' this method reads show struct from file'''
+
 		filepath = '/'.join([self.rootpath, self.show, self.structfile])
-		# 4 main struct is 'show', 'seq', 'scene', 'shot'. but some of this can be missing.
 		with open(filepath) as f:
-			mainStruct = f.readline().strip('\n').split('/')
-			for k in mainStruct:
-				self.names[k]=''
-		mainStruct = mainStruct.insert(mainStruct.index('show')+1, 'work')
-		subStruct = ['task', 'rev']
-		self.struct = mainStruct.extend(subStruct)
+			# file data may look like this : show/seq/scene/shot
+			mainstruct = f.readline().strip('\n').split('/')
+			for k in mainstruct:
+				self.replacements[k]='' # this will be using
+		struct = ['show', 'work', 'seq', 'scene', 'shot', 'software', 'task']
+		for k in struct:
+			if k in self.replacements and self.replacements[k] is None:
+				struct.remove(k)
+		self.struct = struct
+		print('quit updateStruct')
 
 	def updateDir(self):
-		dirlist = []
-		for val in self.position:
-			dirlist.append(val)
-			try:
-				dirlist.append(child[val])
-			except IndexError:
-				pass
-		self.workdir = self.rootpath + self.
+		dirpath = '/'.join(self.position)
+		print(dirpath)
+		self.workdir = self.rootpath + '/' + dirpath
+		print('quit updateDir')
 
 	def updateItems(self):
-		files = sorted(os.listdir(self.workdir))
+		workdir = self.workdir
+		files = sorted(os.listdir(workdir))
 		files = [f for f in files if not (f.startswith('_') or f.startswith('.'))]
 
-		task = status['task']
-		shot = status['shot']
+		task = self.replacements['task']
+		shot = self.replacements['shot']
 
-		if :
+		if task is not None and task is not '':
 			files = [f for f in files if f.startswith(task)]
 			files = [f for f in files if os.path.isfile(workdir + '/' + f)]
 			files.reverse()
-		elif shot:
+		elif shot is not None and shot is not '':
 			files = [f for f in files if os.path.isfile(workdir + '/' + f)]
 			files = list(set([filebox.versioncut(f) for f in files]))
 			files = sorted(files)	
 		else:
 			files = [f for f in files if os.path.isdir(workdir + '/' + f)]
 
-		return files
+		self.items = files
+		print('quit updateItems')
 
 
-	def move(self):
+	def showMessage(self):
+		version = self.version
+		rpl = self.replacements
+		items = [' : '.join(['{0: >5}'.format(index+1),val]) for index,val in enumerate(self.items)]
+		printstruct = ['show', 'seq', 'scene', 'shot', 'task']
+		printstruct = [i for i in printstruct if rpl[i] is not None]
+
+
+		os.system('cls')
+
+		print('-'*75)
+		print('Shot Manager V{version}').format(version=version)
+		print('-'*75)
+
+		last = 0
+		for i,val in enumerate(printstruct):
+			if rpl[val]:
+				last = i+1
+			else:
+				break
+
+		for idx, name in enumerate(printstruct):
+			# print(last, idx), 
+			if rpl[name]:
+				print('{name} : {val}'.format(name=name, val=rpl[name]))
+
+			else:
+				print('< {name} >'.format(name=name))
+				if idx == last:
+					print('\n'.join(items))
+
+		print('-'*75)
+		# print(status['guides'])
+		# print('-'*75)
+		if self.log:
+			print(self.log)
+			print('-'*75)
+		print('>>>'),
+		print('quit showMessage')
+
+	def doSomething(self, userInput):
+		#####################
+		u = userInput.lower()
+		#####################
+		pos = self.position
+		items = self.items
+		workdir = self.workdir
+		log = self.log
+
+		loweritems = [i.lower() for i in items]
+
+		if u in ['q', 'quit']:
+			raise
+		elif u in ['o', 'open']:		
+			opendir(workdir)
+		elif u == '..':
+			self.up()
+		elif u == '/':
+			self.top()
+		elif u == '.':
+			log=workdir # will replace function -> copy directory path
+		elif u == '':
+			pass
+		# elif u.startswith('new '):
+		# 	newname = u.lstrip('new')
+		# 	newname = newname.strip()
+		else:
+			if u.isdigit():
+				u = int(u)
+				if 0 < u <= len(items):
+					self.down(items[u-1])
+				else:
+					log += 'input out of bound : {input}'.format(input=u)
+			else:
+				if u in loweritems:
+					i = loweritems.index(u)
+					u = items[i]
+					self.down(u)
+				else:
+					log += 'invalid input : {input}'.format(input=u)
+
+		
+		self.log = log
+		# self.position = pos
+		print('quit doSomething')
+
+	# def updatePosition(self):
+	# 	# replace with keys
+	# 	pos = []
+	# 	for k in self.struct:
+	# 		if k in self.replacements:
+	# 			pos.append(self.replacements[k])
+	# 		else:
+	# 			pos.append(k)
+
+	# 	# cut
+	# 	idx = 0
+	# 	for i, val in enumerate(pos):
+	# 		if not val:
+	# 			idx = i
+	# 	self.position = pos[:idx]
+	# 	print('quit updatePosition')
+
+
+	def up(self):
+		pos = self.position
+		rpl = self.replacements
+		try:
+			k = pos.pop()
+			while rpl[k]:
+				k = pos.pop()
+		except IndexError:
+			pass
+		except KeyError:
+			pass
+		self.position = pos
+		print('quit up')		
+	def top(self):
+		self.position = []
+		print('quit top')		
+
+	def down(self, dest):	
+		pos = self.position
+		rpl = self.replacements
+		struct = self.struct
+
+		name = struct[len(pos)]
+		pos.append(dest)
+		rpl[name]= pos[-1]
+		print(name, pos[-1])
+		print(struct)
+		print(pos)
+		print(rpl)
+		print('start loop')
+		try:
+			k = struct[len(pos)]
+			print(k)
+			while k not in rpl: # mean it's constant path
+				pos.append(k)
+				k += 1
+				print(pos)
+		except:
+			pass
+		print('quit loop')
+		print(struct)
+		print(pos)
+		print(rpl)
+		# self.position = pos
+
+		print('quit down')
+
+	def excute(file):
+		os.system('start {0}'.format(file))
+	def opendir(d):
+		d = d.replace('/', '\\') # explorer only care about windows style path
+		os.system('explorer {dir}'.format(dir=d))
+	def delete():
 		pass
-
-
-	
-
-
-
-class viewer:
+	def omit():
+		pass
+	def newshow():
+		pass
+	def newjob():
+	# def new(status, name):
+	# 	if status['position']
+		pass
 
 def main():
-	status = {}
-	status = globalStatus(status)
-
-	while status:
-		status = resetStatus(status)
-		showMessage(status)
-		clearlog(status)
+	shot = shotdata()
+	while True:
+		shot.update()
+		raw_input()
+		shot.showMessage()
+		pos = shot.position
+		items = shot.items
 		userInput = raw_input()
-		status = doSomething(status, userInput)
+		shot.doSomething(userInput)
 
-
-def globalStatus(status):
-	status['version'] = '0.01'
-	status['rootdir'] = env.path().ProjectRoot
-	status['guides'] = ''
-	# status['guides'] = "select:'(NUM)name', up:'..', top:'/' directory address:'.'"
-	# status['guides'] += "\nopendir:'(o)open', default program:'(d)default', rename:'(r)rename'"
-	status['position'] = []
-	status['log'] = ''
-	return status
-
-def resetStatus(status):
-	pos = status['position']
-	for i, s in enumerate(['show','seq','scene','shot','task','rev']):
-		try:
-			status[s] = pos[i]
-		except:
-			status[s] = None
-
-	work = workdir(status)
-	items = workitem(status, work)
-
-	status['workdir'] = work
-	status['items'] = items
-	status['log'] = items
-	# status[''] = 
-	return status
-
-def workdir(status):
-	stat = copy.deepcopy(status)
-	root = stat['rootdir']
-	pos = stat['position']
-	if pos:
-		pos.insert(1, 'work')
-		work = '/'.join(pos[:4])
-		workdir = root + '/' + work
-	else:
-		workdir = root
-	return workdir
-
-def workitem(status, workdir):
-	files = sorted(os.listdir(workdir))
-	files = [f for f in files if not (f.startswith('_') or f.startswith('.'))]
-
-	task = status['task']
-	shot = status['shot']
-
-	if task:
-		files = [f for f in files if f.startswith(task)]
-		files = [f for f in files if os.path.isfile(workdir + '/' + f)]
-		files.reverse()
-	elif shot:
-		files = [f for f in files if os.path.isfile(workdir + '/' + f)]
-		files = list(set([filebox.versioncut(f) for f in files]))
-		files = sorted(files)	
-	else:
-		files = [f for f in files if os.path.isdir(workdir + '/' + f)]
-
-	return files
-
-
-
-
-def showMessage(status):
-	items = [' : '.join(['{0: >5}'.format(index+1),val]) for index,val in enumerate(status['items'])]
-	# show = status['show']
-	# seq = status['seq']
-	# scene = status['scene']
-	# shot = status['shot']
-	# task = status['task']
-	# rev = status['rev']
-	struct = ['show', 'seq', 'scene', 'shot', 'task', 'rev']
-
-	os.system('cls')
-
-	print('-'*75)
-	print('Shot Manager V{version}').format(version=status['version'])
-	print('-'*75)
-
-	last = 0
-	for i,val in enumerate(struct):
-		if status[val]:
-			last = i+1
-		else:
-			break
-
-	for idx, name in enumerate(struct):
-		# print(last, idx), 
-		if status[name]:
-			print('{name} : {val}'.format(name=name, val=status[name]))
-
-		else:
-			print('< {name} >'.format(name=name))
-			if idx == last:
-				print('\n'.join(items))
-
-	print('-'*75)
-	print(status['guides'])
-	print('-'*75)
-	if status['log']:
-		print(status['log'])
-		print('-'*75)
-	print('>>>'),
-
-def clearlog(status):
-	status['log'] = ''
-
-def doSomething(status, userInput):
-	#####################
-	u = userInput.lower()
-	#####################
-	pos = status['position']
-	items = status['items']
-	loweritems = [i.lower() for i in status['items']]
-
-	workdir = status['workdir']
-	if u in ['q', 'quit']:
-		return False
-	elif u in ['o', 'open']:		
-		opendir(workdir)
-	elif u == '..':
-		status['log'] += 'here'
-		pos = up(pos)
-		status['log'] += '/'.join(pos)
-	elif u == '/':
-		pos = top(pos)
-	elif u == '.':
-		status['log']=status['workdir'] # will replace function -> copy directory path
-	elif u == '':
-		pass
-	# elif u.startswith('new '):
-	# 	newname = u.lstrip('new')
-	# 	newname = newname.strip()
-	else:
-		if u.isdigit():
-			u = int(u)
-			if 0 < u <= len(items):
-				down(status, pos, items[u-1])
-			else:
-				status['log'] += 'input out of bound : {input}'.format(input=u)
-		else:
-			if u in loweritems:
-				i = loweritems.index(u)
-				u = items[i]
-				down(pos, u)
-			else:
-				status['log'] += 'invalid input : {input}'.format(input=u)
-	status['position'] = pos
-	return status
-
-def up(l):
-	try:
-		l.pop()
-	except IndexError:
-		pass
-	return l
-def top(l):
-	l = []
-	return l
-def down(status, l, sel):	
-	if not status['task']:
-		l.append(sel)
-	else:	
-		file = status['workdir'] + '/' + sel
-		excute(file)
-	return l
-def excute(file):
-	os.system('start {0}'.format(file))
-def opendir(d):
-	d = d.replace('/', '\\') # explorer only care about windows style path
-	os.system('explorer {dir}'.format(dir=d))
-def delete():
-	pass
-def omit():
-	pass
-def newshow():
-	pass
-def newjob():
-# def new(status, name):
-# 	if status['position']
-	pass
 
 if __name__=='__main__':
 	main()
