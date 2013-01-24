@@ -44,7 +44,7 @@ class shotdata:
 	def reset(self):
 		# 'None' in this dict means 'Not Use'
 		mysoftdir = self.software[self.mysoft]['dir']
-		self.replacements = {'show':None, 'seq':None, 'scene':None, 'shot':None, 'software':mysoftdir, 'task':''}
+		self.replacements = {'show':'', 'seq':None, 'scene':None, 'shot':None, 'software':mysoftdir, 'task':''}
 		self.struct = ['show', 'work', 'seq', 'scene', 'shot', 'software', 'task']
 		print('quit reset')
 
@@ -53,7 +53,7 @@ class shotdata:
 		p = self.position
 		if len(p) == 0:
 			self.reset()
-		if len(p) == 1:
+		if len(p) == 2:
 			self.updateShow()
 			self.updateStruct()
 		# updatePosition()
@@ -80,6 +80,7 @@ class shotdata:
 			if k in self.replacements and self.replacements[k] is None:
 				struct.remove(k)
 		self.struct = struct
+		print(self.replacements)
 		print('quit updateStruct')
 
 	def updateDir(self):
@@ -96,11 +97,11 @@ class shotdata:
 		task = self.replacements['task']
 		shot = self.replacements['shot']
 
-		if task is not None and task is not '':
+		if task:
 			files = [f for f in files if f.startswith(task)]
 			files = [f for f in files if os.path.isfile(workdir + '/' + f)]
 			files.reverse()
-		elif shot is not None and shot is not '':
+		elif shot:
 			files = [f for f in files if os.path.isfile(workdir + '/' + f)]
 			files = list(set([filebox.versioncut(f) for f in files]))
 			files = sorted(files)	
@@ -119,8 +120,11 @@ class shotdata:
 		printstruct = [i for i in printstruct if rpl[i] is not None]
 
 
-		os.system('cls')
 
+		os.system('cls')
+		print(rpl)
+		print(printstruct)
+		print(self.workdir)
 		print('-'*75)
 		print('Shot Manager V{version}').format(version=version)
 		print('-'*75)
@@ -165,7 +169,7 @@ class shotdata:
 		if u in ['q', 'quit']:
 			raise
 		elif u in ['o', 'open']:		
-			opendir(workdir)
+			self.opendir()
 		elif u == '..':
 			self.up()
 		elif u == '/':
@@ -197,37 +201,21 @@ class shotdata:
 		# self.position = pos
 		print('quit doSomething')
 
-	# def updatePosition(self):
-	# 	# replace with keys
-	# 	pos = []
-	# 	for k in self.struct:
-	# 		if k in self.replacements:
-	# 			pos.append(self.replacements[k])
-	# 		else:
-	# 			pos.append(k)
-
-	# 	# cut
-	# 	idx = 0
-	# 	for i, val in enumerate(pos):
-	# 		if not val:
-	# 			idx = i
-	# 	self.position = pos[:idx]
-	# 	print('quit updatePosition')
-
-
 	def up(self):
 		pos = self.position
 		rpl = self.replacements
+		struct = self.struct
 		try:
-			k = pos.pop()
-			while rpl[k]:
-				k = pos.pop()
+			pos.pop()
+			k = struct[len(pos)]
+			while k not in rpl:
+				pos.pop()
+				k = struct[len(pos)]
 		except IndexError:
 			pass
-		except KeyError:
-			pass
-		self.position = pos
-		print('quit up')		
+		# self.position = pos
+		print('quit up')
+
 	def top(self):
 		self.position = []
 		print('quit top')		
@@ -250,21 +238,20 @@ class shotdata:
 			print(k)
 			while k not in rpl: # mean it's constant path
 				pos.append(k)
-				k += 1
-				print(pos)
+				k = struct[len(pos)]
 		except:
 			pass
 		print('quit loop')
 		print(struct)
 		print(pos)
 		print(rpl)
-		# self.position = pos
 
 		print('quit down')
 
 	def excute(file):
 		os.system('start {0}'.format(file))
-	def opendir(d):
+	def opendir(self):
+		d = self.workdir
 		d = d.replace('/', '\\') # explorer only care about windows style path
 		os.system('explorer {dir}'.format(dir=d))
 	def delete():
