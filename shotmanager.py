@@ -20,6 +20,7 @@ import filebox
 import copy
 import time
 from collections import defaultdict
+from OrderedDict import OrderedDict
 
 class shotdata:
 	def __init__(self):
@@ -41,110 +42,126 @@ class shotdata:
 		self.log = ''
 		self.reset()
 
-	def reset(self):
-		# 'None' in this dict means 'Not Use'
-		mysoftdir = self.software[self.mysoft]['dir']
-		self.replacements = {'show':'', 'seq':None, 'scene':None, 'shot':None, 'software':mysoftdir, 'task':''}
-		self.struct = ['show', 'work', 'seq', 'scene', 'shot', 'software', 'task']
+	def resetInfo(self):
+		self.info = OrderedDict([
+			('show'		:	{'use':True,
+							'name':''})
+			('work'		:	{'use':True,
+							'name':'work'})
+			('seq'		:	{'use':False,
+							'name':''})
+			('scene'	:	{'use':False,
+							'name':''})
+			('shot'		:	{'use':True,
+							'name':''})
+			('software'	:	{'use':True,
+							'name':self.software[self.mysoft]['dir']})
+			('task'		:	{'use':True,
+							'name':''})
+			('rev'		:	{'use':True,
+							'name':''})
+			('show'		:	{'use':True,
+							'name':''})])
 		print('quit reset')
 
 	def update(self):
 		''' update status : workdir, dirlists ... '''
-		p = self.position
-		if len(p) == 0:
+		info = self.info
+		show, others = info['show']['name'], info['seq']['name'] and info['scene']['name'] and info['shot']['name']
+
+		if not show:
 			self.reset()
-		if len(p) == 2:
+		if show and not others:
 			self.updateShow()
-			self.updateStruct()
-		# updatePosition()
 		self.updateDir()
 		self.updateItems()
 		print('quit update')
 
 	def updateShow(self):
-		self.show = self.position[0]
-		self.replacements['show'] = self.position[0]
-		print('quit updateShow')
+		'''update show struct'''
 
-	def updateStruct(self):
-		'''when our position arrives at 'show' this method reads show struct from file'''
+		self.resetInfo()
 
-		filepath = '/'.join([self.rootpath, self.show, self.structfile])
-		with open(filepath) as f:
-			# file data may look like this : show/seq/scene/shot
-			mainstruct = f.readline().strip('\n').split('/')
-			for k in mainstruct:
-				self.replacements[k]='' # this will be using
-		struct = ['show', 'work', 'seq', 'scene', 'shot', 'software', 'task']
-		for k in struct:
-			if k in self.replacements and self.replacements[k] is None:
-				struct.remove(k)
-		self.struct = struct
-		print(self.replacements)
+		show = self.info['show']['name']
+		structfile = '/'.join([self.rootpath, show, self.structfile])
+
+		with open(structfile) as f: # file data : (seq)/(scene)/shot, seq or scene may not exist.
+			uses = f.readline().strip('\n').split('/')
+			for s in uses:
+				self.info[s]['use']=True
 		print('quit updateStruct')
 
 	def updateDir(self):
-		dirpath = '/'.join(self.position)
+		pos = self.infoToPos()
+
+		dirpath = '/'.join(pos)
 		print(dirpath)
 		self.workdir = self.rootpath + '/' + dirpath
 		print('quit updateDir')
 
-	def updateItems(self):
-		workdir = self.workdir
-		files = sorted(os.listdir(workdir))
-		files = [f for f in files if not (f.startswith('_') or f.startswith('.'))]
+	def infoToPos(self):
+		pos = []
+		for k, v in self.info:
+			if v['use']
+				if v['name']:
+					pos.append(v['name'])		
+				else:
+					break
+			else:
+				pass
+		return pos
 
-		task = self.replacements['task']
-		shot = self.replacements['shot']
+	def updateItems(self):
+		d = self.workdir
+		it = sorted(os.listdir(d))
+		it = [i for i in it if not (i.startswith('_') or i.startswith('.'))]
+
+		task = self.info['task']['name']
+		shot = self.info['shot']['name']
 
 		if task:
-			files = [f for f in files if f.startswith(task)]
-			files = [f for f in files if os.path.isfile(workdir + '/' + f)]
-			files.reverse()
+			it = [i for i in it if i.startswith(task)]
+			it = [i for i in it if os.path.isfile(d + '/' + i)]
+			it.reverse()
 		elif shot:
-			files = [f for f in files if os.path.isfile(workdir + '/' + f)]
-			files = list(set([filebox.versioncut(f) for f in files]))
-			files = sorted(files)	
+			it = [i for i in it if os.path.isfile(d + '/' + i)]
+			it = list(set([filebox.versioncut(i) for i in it]))
+			it = sorted(it)	
 		else:
-			files = [f for f in files if os.path.isdir(workdir + '/' + f)]
+			it = [i for i in it if os.path.isdir(d + '/' + i)]
 
-		self.items = files
+		self.items = it
 		print('quit updateItems')
 
 
 	def showMessage(self):
-		version = self.version
-		rpl = self.replacements
-		items = [' : '.join(['{0: >5}'.format(index+1),val]) for index,val in enumerate(self.items)]
-		printstruct = ['show', 'seq', 'scene', 'shot', 'task']
-		printstruct = [i for i in printstruct if rpl[i] is not None]
+		info = self.info
+		pos = self.infoToPos()
 
-
+		# pstruct = ['show', 'seq', 'scene', 'shot', 'task']
+		# pstruct = [i for i in pstruct if info[i]['use']]
 
 		os.system('cls')
 		print(rpl)
-		print(printstruct)
+		print(pstruct)
 		print(self.workdir)
 		print('-'*75)
-		print('Shot Manager V{version}').format(version=version)
+		print('Shot Manager V{version}').format(version=self.version)
 		print('-'*75)
 
-		last = 0
-		for i,val in enumerate(printstruct):
-			if rpl[val]:
-				last = i+1
-			else:
-				break
-
-		for idx, name in enumerate(printstruct):
+		items = [' : '.join(['{0: >5}'.format(index+1),val]) for index,val in enumerate(self.items)]
+		last = len(pos)
+		for i, s in enumerate(info):
 			# print(last, idx), 
-			if rpl[name]:
-				print('{name} : {val}'.format(name=name, val=rpl[name]))
-
+			if s['use']:
+				if s['name']:
+					print('{name} : {val}'.format(name=name, val=s['name']))
+				else:
+					print('< {name} >'.format(name=name))
+					if i is last:
+						print('\n'.join(items))
 			else:
-				print('< {name} >'.format(name=name))
-				if idx == last:
-					print('\n'.join(items))
+				pass
 
 		print('-'*75)
 		# print(status['guides'])
