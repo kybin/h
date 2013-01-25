@@ -40,28 +40,29 @@ class shotdata:
 		self.mysoft = 'houdini'
 		self.structfile = '.showStruct'
 		self.log = ''
-		self.reset()
+		self.resetInfo()
 
 	def resetInfo(self):
 		self.info = OrderedDict([
-			('show'		:	{'use':True,
-							'name':''})
-			('work'		:	{'use':True,
-							'name':'work'})
-			('seq'		:	{'use':False,
-							'name':''})
-			('scene'	:	{'use':False,
-							'name':''})
-			('shot'		:	{'use':True,
-							'name':''})
-			('software'	:	{'use':True,
-							'name':self.software[self.mysoft]['dir']})
-			('task'		:	{'use':True,
-							'name':''})
-			('rev'		:	{'use':True,
-							'name':''})
-			('show'		:	{'use':True,
-							'name':''})])
+			('show'	,	{'use':True,
+						'name':''}),
+			('work'	,	{'use':'Constant',
+						'name':'work'}),
+			('seq'	,	{'use':False,
+						'name':''}),
+			('scene',	{'use':False,
+						'name':''}),
+			('shot'	,	{'use':True,
+						'name':''}),
+			('software',{'use':'Constant',
+						'name':self.software[self.mysoft]['dir']}),
+			('task'	,	{'use':True,
+						'name':''}),
+			('rev'	,	{'use':True,
+						'name':''}),
+			('show'	,	{'use':True,
+						'name':''}),
+			])
 		print('quit reset')
 
 	def update(self):
@@ -70,7 +71,7 @@ class shotdata:
 		show, others = info['show']['name'], info['seq']['name'] and info['scene']['name'] and info['shot']['name']
 
 		if not show:
-			self.reset()
+			self.resetInfo()
 		if show and not others:
 			self.updateShow()
 		self.updateDir()
@@ -101,8 +102,8 @@ class shotdata:
 
 	def infoToPos(self):
 		pos = []
-		for k, v in self.info:
-			if v['use']
+		for k, v in self.info.iteritems():
+			if v['use']:
 				if v['name']:
 					pos.append(v['name'])		
 				else:
@@ -110,6 +111,16 @@ class shotdata:
 			else:
 				pass
 		return pos
+
+	# def posToInfo(self, pos):
+	# 	info = self.info
+	# 	for i, v in enumerate(pos):
+	# 		info[i]
+
+	# 		elif v['use'] == 'Constant':
+	# 			append()
+	# 		else:
+
 
 	def updateItems(self):
 		d = self.workdir
@@ -142,8 +153,6 @@ class shotdata:
 		# pstruct = [i for i in pstruct if info[i]['use']]
 
 		os.system('cls')
-		print(rpl)
-		print(pstruct)
 		print(self.workdir)
 		print('-'*75)
 		print('Shot Manager V{version}').format(version=self.version)
@@ -173,10 +182,10 @@ class shotdata:
 		print('quit showMessage')
 
 	def doSomething(self, userInput):
-		#####################
+
 		u = userInput.lower()
-		#####################
-		pos = self.position
+
+		# pos = self.position
 		items = self.items
 		workdir = self.workdir
 		log = self.log
@@ -219,51 +228,21 @@ class shotdata:
 		print('quit doSomething')
 
 	def up(self):
-		pos = self.position
-		rpl = self.replacements
-		struct = self.struct
-		try:
-			pos.pop()
-			k = struct[len(pos)]
-			while k not in rpl:
-				pos.pop()
-				k = struct[len(pos)]
-		except IndexError:
-			pass
+		info = self.info
+		head = self.curHead()
+		if head:
+			info[head]['name']=''
 		# self.position = pos
 		print('quit up')
 
 	def top(self):
-		self.position = []
+		self.resetInfo()
 		print('quit top')		
 
-	def down(self, dest):	
-		pos = self.position
-		rpl = self.replacements
-		struct = self.struct
-
-		name = struct[len(pos)]
-		pos.append(dest)
-		rpl[name]= pos[-1]
-		print(name, pos[-1])
-		print(struct)
-		print(pos)
-		print(rpl)
-		print('start loop')
-		try:
-			k = struct[len(pos)]
-			print(k)
-			while k not in rpl: # mean it's constant path
-				pos.append(k)
-				k = struct[len(pos)]
-		except:
-			pass
-		print('quit loop')
-		print(struct)
-		print(pos)
-		print(rpl)
-
-		print('quit down')
+	def down(self, dest):
+		info = self.info
+		next = self.nextHead()
+		info[next]=dest
 
 	def excute(file):
 		os.system('start {0}'.format(file))
@@ -281,6 +260,30 @@ class shotdata:
 	# def new(status, name):
 	# 	if status['position']
 		pass
+	def curHead(self):
+		last = ''
+		for k, v in self.info:
+			if v['use']:
+				if v['name']:
+					last=k
+				else:
+					break
+			else:
+				pass
+		return last
+	def nextHead(self):
+		last = ''
+		for k, v in self.info:
+			if v['use']:
+				if not v['name']:
+					last=k
+					break
+			else:
+				pass
+		if not last:
+			print('stack is full!')
+			raise
+		return last
 
 def main():
 	shot = shotdata()
