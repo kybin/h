@@ -19,7 +19,7 @@ import env
 import filebox
 import copy
 import time
-from collections import defaultdict
+# from collections import defaultdict
 from OrderedDict import OrderedDict
 
 class shotdata:
@@ -40,40 +40,59 @@ class shotdata:
 		self.mysoft = 'houdini'
 		self.structfile = '.showStruct'
 		self.log = ''
-		self.resetInfo()
+		# self.resetInfo()
 
 	def resetInfo(self):
+
 		self.info = OrderedDict([
-			('show'	,	{'use':True,
+			('root',	{'type':True,
+						'name':self.rootpath})
+			('show'	,	{'type':True,
 						'name':''}),
-			('work'	,	{'use':'Constant',
+			('work'	,	{'type':'Constant',
 						'name':'work'}),
-			('seq'	,	{'use':False,
+			('seq'	,	{'type':False,
 						'name':''}),
-			('scene',	{'use':False,
+			('scene',	{'type':False,
 						'name':''}),
-			('shot'	,	{'use':True,
+			('shot'	,	{'type':True,
 						'name':''}),
-			('software',{'use':'Constant',
+			('software',{'type':'Constant',
 						'name':self.software[self.mysoft]['dir']}),
-			('task'	,	{'use':True,
+			('task'	,	{'type':True,
 						'name':''}),
-			('rev'	,	{'use':True,
+			('rev'	,	{'type':True,
 						'name':''}),
-			('show'	,	{'use':True,
+			('show'	,	{'type':True,
 						'name':''}),
 			])
 		print('quit reset')
 
+	def updateInfo(self):
+		info = self.info
+		showi = OrderedDict([])
+		# [showi[n]=v for n, v in info if v['type']]
+		for n, v in info.iteritems():
+			print(n, v)
+			if v['type']:
+				showi[n]=v
+
+		print(showi)
+		self.info = showi
+
 	def update(self):
 		''' update status : workdir, dirlists ... '''
 		info = self.info
-		show, others = info['show']['name'], info['seq']['name'] and info['scene']['name'] and info['shot']['name']
+		print(info)
+		show = info['show']['name']
 
-		if not show:
+		others = info['seq']['name'] and info['scene']['name'] and info['shot']['name']
+
+		if head == '':
 			self.resetInfo()
-		if show and not others:
-			self.updateShow()
+		if head == 'show':
+			self.updateShow() 
+			self.updateInfo()
 		self.updateDir()
 		self.updateItems()
 		print('quit update')
@@ -85,11 +104,12 @@ class shotdata:
 
 		show = self.info['show']['name']
 		structfile = '/'.join([self.rootpath, show, self.structfile])
-
 		with open(structfile) as f: # file data : (seq)/(scene)/shot, seq or scene may not exist.
 			uses = f.readline().strip('\n').split('/')
 			for s in uses:
-				self.info[s]['use']=True
+				self.info[s]['type']=True
+
+		self.updateInfo()
 		print('quit updateStruct')
 
 	def updateDir(self):
@@ -102,8 +122,9 @@ class shotdata:
 
 	def infoToPos(self):
 		pos = []
+
 		for k, v in self.info.iteritems():
-			if v['use']:
+			if v['type']:
 				if v['name']:
 					pos.append(v['name'])		
 				else:
@@ -117,7 +138,7 @@ class shotdata:
 	# 	for i, v in enumerate(pos):
 	# 		info[i]
 
-	# 		elif v['use'] == 'Constant':
+	# 		elif v['type'] == 'Constant':
 	# 			append()
 	# 		else:
 
@@ -150,7 +171,7 @@ class shotdata:
 		pos = self.infoToPos()
 
 		# pstruct = ['show', 'seq', 'scene', 'shot', 'task']
-		# pstruct = [i for i in pstruct if info[i]['use']]
+		# pstruct = [i for i in pstruct if info[i]['type']]
 
 		os.system('cls')
 		print(self.workdir)
@@ -160,14 +181,15 @@ class shotdata:
 
 		items = [' : '.join(['{0: >5}'.format(index+1),val]) for index,val in enumerate(self.items)]
 		last = len(pos)
-		for i, s in enumerate(info):
-			# print(last, idx), 
-			if s['use']:
-				if s['name']:
-					print('{name} : {val}'.format(name=name, val=s['name']))
+		for n, i in enumerate(info.iteritems()):
+			# print(n,i)
+			ik, iv = i
+			if iv['type']:
+				if iv['name']:
+					print('{key} : {val}'.format(key=ik, val=iv['name']))
 				else:
-					print('< {name} >'.format(name=name))
-					if i is last:
+					print('< {key} >'.format(key=ik))
+					if n is last:
 						print('\n'.join(items))
 			else:
 				pass
@@ -263,7 +285,7 @@ class shotdata:
 	def curHead(self):
 		last = ''
 		for k, v in self.info:
-			if v['use']:
+			if v['type']:
 				if v['name']:
 					last=k
 				else:
@@ -273,8 +295,8 @@ class shotdata:
 		return last
 	def nextHead(self):
 		last = ''
-		for k, v in self.info:
-			if v['use']:
+		for k, v in self.info.iteritems():
+			if v['type']:
 				if not v['name']:
 					last=k
 					break
