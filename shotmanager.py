@@ -29,6 +29,7 @@ class shotdata:
 		self.user = 'yongbin'
 
 		self.rootpath = env.path().ProjectRoot
+		self.head = ''
 		self.position = []
 		self.workdir = self.rootpath
 		self.software = {
@@ -39,169 +40,93 @@ class shotdata:
 		# self.struct = None
 		self.mysoft = 'houdini'
 		self.structfile = '.showStruct'
+		self.variableStruct = ['seq', 'scene']
 		self.log = ''
-		# self.resetInfo()
-
-	def resetInfo(self):
-
-		self.info = OrderedDict([
-			('root',	{'type':True,
-						'name':self.rootpath})
-			('show'	,	{'type':True,
-						'name':''}),
-			('work'	,	{'type':'Constant',
-						'name':'work'}),
-			('seq'	,	{'type':False,
-						'name':''}),
-			('scene',	{'type':False,
-						'name':''}),
-			('shot'	,	{'type':True,
-						'name':''}),
-			('software',{'type':'Constant',
-						'name':self.software[self.mysoft]['dir']}),
-			('task'	,	{'type':True,
-						'name':''}),
-			('rev'	,	{'type':True,
-						'name':''}),
-			('show'	,	{'type':True,
-						'name':''}),
-			])
-		print('quit reset')
-
-	def updateInfo(self):
-		info = self.info
-		showi = OrderedDict([])
-		# [showi[n]=v for n, v in info if v['type']]
-		for n, v in info.iteritems():
-			print(n, v)
-			if v['type']:
-				showi[n]=v
-
-		print(showi)
-		self.info = showi
+		# self.resetStruct()
 
 	def update(self):
 		''' update status : workdir, dirlists ... '''
-		info = self.info
-		print(info)
-		show = info['show']['name']
-
-		others = info['seq']['name'] and info['scene']['name'] and info['shot']['name']
+		struct = self.struct
 
 		if head == '':
-			self.resetInfo()
+			self.resetStruct()
 		if head == 'show':
 			self.updateShow() 
-			self.updateInfo()
 		self.updateDir()
 		self.updateItems()
 		print('quit update')
 
+	def resetStruct(self):
+		self.struct = OrderedDict([
+			('root', self.rootpath)
+			('show'	, ''
+			('work'	, 'work'),
+			('seq'	, ''),
+			('scene', ''),
+			('shot'	, ''),
+			('software', self.software[self.mysoft]['dir']),
+			('task'	, ''
+			('rev'	, ''
+			('show'	, '')
+			])
+
 	def updateShow(self):
 		'''update show struct'''
+		struct = self.struct
 
-		self.resetInfo()
+		rs = self.readStruct()
+		vs = self.variableStruct
+		for s in vs:
+			if s not in rs:
+				del struct[s]
+		# if error we have to return 'self.struct'
 
-		show = self.info['show']['name']
-		structfile = '/'.join([self.rootpath, show, self.structfile])
-		with open(structfile) as f: # file data : (seq)/(scene)/shot, seq or scene may not exist.
-			uses = f.readline().strip('\n').split('/')
-			for s in uses:
-				self.info[s]['type']=True
-
-		self.updateInfo()
-		print('quit updateStruct')
+	def readStruct(self):
+		structfile = '/'.join([self.rootpath, struct['show'], self.structfile])
+		with open(structfile) as f:
+			struct = f.readline().strip('\n').split('/')
+		return struct
 
 	def updateDir(self):
-		pos = self.infoToPos()
-
-		dirpath = '/'.join(pos)
-		print(dirpath)
-		self.workdir = self.rootpath + '/' + dirpath
-		print('quit updateDir')
-
-	def infoToPos(self):
-		pos = []
-
-		for k, v in self.info.iteritems():
-			if v['type']:
-				if v['name']:
-					pos.append(v['name'])		
-				else:
-					break
-			else:
-				pass
-		return pos
-
-	# def posToInfo(self, pos):
-	# 	info = self.info
-	# 	for i, v in enumerate(pos):
-	# 		info[i]
-
-	# 		elif v['type'] == 'Constant':
-	# 			append()
-	# 		else:
-
+		self.workdir = '/'.join(self.struct.values()[:headIndex+1])
 
 	def updateItems(self):
-		d = self.workdir
-		it = sorted(os.listdir(d))
-		it = [i for i in it if not (i.startswith('_') or i.startswith('.'))]
-
-		task = self.info['task']['name']
-		shot = self.info['shot']['name']
-
-		if task:
-			it = [i for i in it if i.startswith(task)]
-			it = [i for i in it if os.path.isfile(d + '/' + i)]
-			it.reverse()
-		elif shot:
-			it = [i for i in it if os.path.isfile(d + '/' + i)]
-			it = list(set([filebox.versioncut(i) for i in it]))
-			it = sorted(it)	
+		'''it takes workdir and return directory items'''
+		i = os.listdir(os.workdir)
+		i = cullItems(i)
+		if head in ['root', 'show', 'seq', 'scene']:
+			i = returnDirs(i)
+		elif head == 'show':
+			i = returnTasks(i)
+		elif head == 'task':
+			i = returnRevs(i)
 		else:
-			it = [i for i in it if os.path.isdir(d + '/' + i)]
+			print('head is in danger area! : {head}'.format(head=head))
+			raise
+		self.items = i
 
-		self.items = it
-		print('quit updateItems')
+	def cullItems(self, items):
+		'''item startswith . or _ will pass'''
+		culls = [i for i in items if not (i.startswith('.') or i.startswith('_'))]
+		return culls
 
+	def returnDirs(self, items):
+		'''it takes items and return directories'''
+		wd = self.workdir
+		dirs = [i for i in items if os.path.isdir(wd + '/' + i)]
+		return dirs
+
+	def returnTasks(self):
+		# it takes file list and return tasks
+		pass
+
+	def returnRevs(self):
+		# it takes files and return revs
+		pass
 
 	def showMessage(self):
-		info = self.info
-		pos = self.infoToPos()
-
-		# pstruct = ['show', 'seq', 'scene', 'shot', 'task']
-		# pstruct = [i for i in pstruct if info[i]['type']]
-
-		os.system('cls')
-		print(self.workdir)
-		print('-'*75)
-		print('Shot Manager V{version}').format(version=self.version)
-		print('-'*75)
-
-		items = [' : '.join(['{0: >5}'.format(index+1),val]) for index,val in enumerate(self.items)]
-		last = len(pos)
-		for n, i in enumerate(info.iteritems()):
-			# print(n,i)
-			ik, iv = i
-			if iv['type']:
-				if iv['name']:
-					print('{key} : {val}'.format(key=ik, val=iv['name']))
-				else:
-					print('< {key} >'.format(key=ik))
-					if n is last:
-						print('\n'.join(items))
-			else:
-				pass
-
-		print('-'*75)
-		# print(status['guides'])
-		# print('-'*75)
-		if self.log:
-			print(self.log)
-			print('-'*75)
-		print('>>>'),
-		print('quit showMessage')
+		# return message
+		pass
 
 	def doSomething(self, userInput):
 
@@ -249,22 +174,41 @@ class shotdata:
 		# self.position = pos
 		print('quit doSomething')
 
-	def up(self):
-		info = self.info
-		head = self.curHead()
-		if head:
-			info[head]['name']=''
-		# self.position = pos
-		print('quit up')
+
+
+	# head and position
+
+	def headIndex(self):
+		return self.struct.keys().index(head)
+
+	def headShift(self, shift):
+		keys = self.struct.keys()
+		cur = headIndex()
+		self.head = keys[cur+shift]
 
 	def top(self):
-		self.resetInfo()
+		self.head = 'root'
+		self.resetStruct()
 		print('quit top')		
 
+	def up(self):
+		struct = self.struct
+		head = self.curHead()
+
+		struct[head]=''
+		self.headShift(-1)
+		while struct[head]:
+			headShift(-1)
+
 	def down(self, dest):
-		info = self.info
-		next = self.nextHead()
-		info[next]=dest
+		struct = self.struct
+		head = self.head
+		self.headShift(1)
+		struct[head]=dest
+		while struct[head]:
+			headShift(1)
+
+
 
 	def excute(file):
 		os.system('start {0}'.format(file))
@@ -282,30 +226,6 @@ class shotdata:
 	# def new(status, name):
 	# 	if status['position']
 		pass
-	def curHead(self):
-		last = ''
-		for k, v in self.info:
-			if v['type']:
-				if v['name']:
-					last=k
-				else:
-					break
-			else:
-				pass
-		return last
-	def nextHead(self):
-		last = ''
-		for k, v in self.info.iteritems():
-			if v['type']:
-				if not v['name']:
-					last=k
-					break
-			else:
-				pass
-		if not last:
-			print('stack is full!')
-			raise
-		return last
 
 def main():
 	shot = shotdata()
@@ -319,5 +239,5 @@ def main():
 		shot.doSomething(userInput)
 
 
-if __name__=='__main__':
+if __name__ == '__main__':
 	main()
