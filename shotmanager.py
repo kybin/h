@@ -1,25 +1,11 @@
 # coding:utf-8
 
-# 이 프로그램은 계속 열어놓고 프로그램을 실행시키거나 폴더를 열때 사용한다.
-# 프로젝트의 구조는 다음중 하나가 된다.
-
-# 1.쇼/시퀀스/씬/샷/잡/리비전
-# 2.쇼/씬/샷/리비전
-# 3.쇼/샷/리비전
-
-# 구조를 리스트로 표현해보면 [$SHOW/$SEQ/$SCENE/$SHOT/$REV]
-# 실제폴더구조는	[$SHOW/work/$SEQ/$SCENE/$SHOT/$REV]
-# 					[$SHOW/out/ $SEQ/$SCENE/$SHOT/$REV]
-
-# 여기서 샷부터는 각각의 프로그램마다 따로 출력된다. (work,out으로 나눌수도 있음)
-# 각 위치에서는 아이템 선택또는 폴더열기가 가능하다.
-# 기능 : 위치이동, 파일열기, 폴더열기
 import os
+import sys
 import env
 import filebox
-import copy
-import time
-# from collections import defaultdict
+import re
+import posixpath as unixpath
 from OrderedDict import OrderedDict
 
 class shotdata:
@@ -29,46 +15,46 @@ class shotdata:
 		self.user = 'yongbin'
 
 		self.rootpath = env.path().ProjectRoot
-		self.head = ''
-		self.position = []
+		self.head = 'root'
 		self.workdir = self.rootpath
 		self.software = {
-						'houdini':{'dir':'houdini', 'exe':'hip'}, 
-						'maya':{'dir':'maya/scenes', 'exe':['ma', 'mb']},
-						'max':{'dir':'max', 'exe':'max'}
+						'houdini':{'dir':'houdini', 'read':'hip', 'write':'hip'}, 
+						'maya':{'dir':'maya/scenes', 'read':['ma', 'mb'], 'write':'mb'},
+						'max':{'dir':'max', 'read':'max', 'write':'max'}
 						}
 		# self.struct = None
-		self.mysoft = 'houdini'
+		self.use = 'houdini'
 		self.structfile = '.showStruct'
 		self.variableStruct = ['seq', 'scene']
+		self.bypassStruct = ['work','software']
+		self.printStruct = ['show', 'seq', 'scene', 'shot']
+		self.runfile = ''
 		self.log = ''
-		# self.resetStruct()
-
-	def update(self):
-		''' update status : workdir, dirlists ... '''
-		struct = self.struct
-
-		if head == '':
-			self.resetStruct()
-		if head == 'show':
-			self.updateShow() 
-		self.updateDir()
-		self.updateItems()
-		print('quit update')
+		self.resetStruct()
 
 	def resetStruct(self):
 		self.struct = OrderedDict([
-			('root', self.rootpath)
-			('show'	, ''
+			('root', self.rootpath),
+			('show'	, ''),
 			('work'	, 'work'),
 			('seq'	, ''),
 			('scene', ''),
 			('shot'	, ''),
-			('software', self.software[self.mysoft]['dir']),
-			('task'	, ''
-			('rev'	, ''
-			('show'	, '')
+			('software', self.software[self.use]['dir']),
+			('task'	, ''),
+			('rev'	, '')
 			])
+		self.printStruct = ['show', 'seq', 'scene', 'shot']
+
+	def update(self):
+		''' update status : workdir, dirlists ... '''
+		head = self.head
+		if head == 'root':
+			self.resetStruct()
+		if head == 'work': # 원래 쇼였을때 실행되어야하나 down() 실행시 바로 넘어가 버리기 때문에 work로 지정
+			self.updateShow() 
+		self.updateDir()
+		self.updateItems()
 
 	def updateShow(self):
 		'''update show struct'''
@@ -78,30 +64,42 @@ class shotdata:
 		vs = self.variableStruct
 		for s in vs:
 			if s not in rs:
-				del struct[s]
-		# if error we have to return 'self.struct'
+				try: 
+					self.printStruct.pop(s)
+					del struct[s] # 가변적인 틀중 샷과 맞지 않는 틀은 지움
+				except:
+					pass
 
 	def readStruct(self):
-		structfile = '/'.join([self.rootpath, struct['show'], self.structfile])
+		structfile = '/'.join([self.rootpath, self.struct['show'], self.structfile])
 		with open(structfile) as f:
 			struct = f.readline().strip('\n').split('/')
 		return struct
 
 	def updateDir(self):
-		self.workdir = '/'.join(self.struct.values()[:headIndex+1])
+		idx = min(self.headIndex(), self.struct.keys().index('software'))
+		wd = '/'.join(self.struct.values()[:idx+1])
+		print(wd)
+		if os.path.isdir(wd):
+			self.workdir = wd
+		else:
+			print('There is no such directory.')
+			raise ValueError
 
 	def updateItems(self):
 		'''it takes workdir and return directory items'''
-		i = os.listdir(os.workdir)
-		i = cullItems(i)
-		if head in ['root', 'show', 'seq', 'scene']:
-			i = returnDirs(i)
-		elif head == 'show':
-			i = returnTasks(i)
+		head = self.head
+		i = os.listdir(self.workdir)
+		i = self.cullItems(i)
+		if head in ['root', 'show', 'work', 'seq', 'scene', 'shot']:
+			i = self.returnDirs(i)
+		elif head == 'software':
+			i = self.returnTasks(i)
+			self.struct['task']=i
 		elif head == 'task':
-			i = returnRevs(i)
+			i = self.returnRevs(i, self.struct['task'])
 		else:
-			print('head is in danger area! : {head}'.format(head=head))
+			print('head is in a danger area! : {head}'.format(head=head))
 			raise
 		self.items = i
 
@@ -116,23 +114,36 @@ class shotdata:
 		dirs = [i for i in items if os.path.isdir(wd + '/' + i)]
 		return dirs
 
-	def returnTasks(self):
-		# it takes file list and return tasks
-		pass
+	def returnTasks(self, items):
+		'''it takes file list and return tasks'''
+		wd = self.workdir
+		files = [i for i in items if os.path.isfile(wd + '/' + i)]
+		rest = re.compile('[._]\D*\d*[.]\w+$')
+		tasks = [rest.sub('', i) for i in files]
+		tasks = sorted(list(set(tasks)))
+		# tasks.reverse()
+		return tasks
 
-	def returnRevs(self):
-		# it takes files and return revs
-		pass
+	def returnRevs(self, items, task):
+		'''it takes files and return revs'''
+		revs = [i for i in items if task in i]
+		return revs
 
 	def showMessage(self):
-		# return message
-		pass
+		items = [' : '.join(['{0: >5}'.format(index+1),val]) for index,val in enumerate(self.items)]
+		print
+		print('-'*75)
+		print('Shot Manager V{version}').format(version=self.version)
+		print('-'*75)
+		if self.head != 'root':
+			print('info : {0}'.format('/'.join(self.printStruct)))
+		print(self.nextHead())
+		print('\n'.join(items))
+		print('>>>'),
 
 	def doSomething(self, userInput):
+		u = userInput.strip().lower()
 
-		u = userInput.lower()
-
-		# pos = self.position
 		items = self.items
 		workdir = self.workdir
 		log = self.log
@@ -140,9 +151,15 @@ class shotdata:
 		loweritems = [i.lower() for i in items]
 
 		if u in ['q', 'quit']:
-			raise
+			sys.exit('Bye!')
 		elif u in ['o', 'open']:		
 			self.opendir()
+		elif u.startswith('use '):
+			change, sw = u.split(' ')
+			self.changesoftware(sw)
+		elif u.startswith('new '):
+			new, name = u.split()
+			self.new(name)
 		elif u == '..':
 			self.up()
 		elif u == '/':
@@ -151,9 +168,6 @@ class shotdata:
 			log=workdir # will replace function -> copy directory path
 		elif u == '':
 			pass
-		# elif u.startswith('new '):
-		# 	newname = u.lstrip('new')
-		# 	newname = newname.strip()
 		else:
 			if u.isdigit():
 				u = int(u)
@@ -171,73 +185,149 @@ class shotdata:
 
 		
 		self.log = log
-		# self.position = pos
-		print('quit doSomething')
 
 
 
 	# head and position
 
-	def headIndex(self):
-		return self.struct.keys().index(head)
-
 	def headShift(self, shift):
 		keys = self.struct.keys()
-		cur = headIndex()
-		self.head = keys[cur+shift]
+		cur = self.headIndex()
+		new = keys[cur+shift]
+		self.head = new
+
+	def headIndex(self):
+		return self.struct.keys().index(self.head)
+
+	def nextHead(self):
+		return self.struct.keys()[self.headIndex()+1]
+
+	def prevHead(self):
+		return self.struct.keys()[self.headIndex()-1]
 
 	def top(self):
 		self.head = 'root'
 		self.resetStruct()
-		print('quit top')		
 
 	def up(self):
 		struct = self.struct
-		head = self.curHead()
-
-		struct[head]=''
+		# self.headShift(-1)
+		if self.head in self.bypassStruct:
+			while self.head in self.bypassStruct:
+				self.headShift(-1)
+		struct[self.head]=''
 		self.headShift(-1)
-		while struct[head]:
-			headShift(-1)
+		print(self.head)
 
 	def down(self, dest):
 		struct = self.struct
-		head = self.head
-		self.headShift(1)
-		struct[head]=dest
-		while struct[head]:
-			headShift(1)
+		if self.head != 'task':
+			self.headShift(1)
+			struct[self.head]=dest
+			while self.nextHead() in self.bypassStruct:
+				self.headShift(1)
+		else:
+			self.run(self.workdir + '/' + dest)
 
 
+	# user actions
 
-	def excute(file):
+	def run(self, file):
 		os.system('start {0}'.format(file))
 	def opendir(self):
 		d = self.workdir
-		d = d.replace('/', '\\') # explorer only care about windows style path
+		d = d.replace('/', '\\') # explorer only care about windows style paths
 		os.system('explorer {dir}'.format(dir=d))
-	def delete():
+	def changesoftware(self, sw):
+		if sw in self.software:
+			self.use = sw
+			self.struct['software'] = self.software[self.use]['dir']
+		else:
+			raise('there is no such software')
+
+	def delete(self):
 		pass
-	def omit():
+	def omit(self):
 		pass
-	def newshow():
-		pass
-	def newjob():
-	# def new(status, name):
-	# 	if status['position']
-		pass
+
+
+
+	# new file or something...
+
+	def new(self, name):
+		dest = self.nextHead()
+
+		if dest == 'show':
+			A, B, C = 'seq/scene/shot', 'scene/shot', 'shot'
+			print('choose one of these types')
+			print('1. show/'+A)
+			print('2. show/'+B)
+			print('3. show/'+C)
+
+			ui = raw_input()
+			try:
+				ui = int(ui)
+				showtype = [A, B, C][ui-1]
+			except:
+				print('your intput is invalid')
+				return
+			self.newshow(name, showtype)
+
+		elif dest in ['seq', 'scene']:
+			self.newitem(name)
+		elif dest == 'shot':
+			self.newshot(name)
+		elif dest in ['task', 'rev']:
+			self.newtask(name)
+
+	def itempath(self, item):
+		return unixpath.join(self.workdir, item)
+
+	def newitem(self, dirname):
+		nd = unixpath.join(self.workdir, dirname)
+		os.mkdir(nd)
+
+	def newshow(self, show, showtype):
+		path = self.itempath(show)
+		os.mkdir(path)
+		filebox.makeTree(path, 'show')
+		
+		showfile = unixpath.join(path, self.structfile)
+		with open(showfile, 'w') as f:
+			f.write(showtype)
+
+	def newshot(self, shot):
+		path = self.itempath(shot)
+		os.mkdir(path)
+		filebox.makeTree(path, 'shot')
+
+	def newtask(self, taskname):
+		filename = self.fileprepath() + '.' + taskname + '.' + self.software[self.use]['write']
+		print(filename)
+		# with open(taskname) as f:
+		# 	f.write(taskname)
+
+	def fileprepath(self):
+		struct = self.struct
+		bypasses = self.bypassStruct
+		show, shot = struct.keys().index('show'), struct.keys().index('shot')
+		vals = struct.values()[show : shot]
+		pp = []
+		for k in vals:
+			if not k in bypasses:
+				pp.append(k)
+		return('_'.join(pp))
 
 def main():
+	print('program in')
 	shot = shotdata()
 	while True:
+	# for i in range(1):
 		shot.update()
-		raw_input()
+		# raw_input()
 		shot.showMessage()
-		pos = shot.position
-		items = shot.items
 		userInput = raw_input()
 		shot.doSomething(userInput)
-
 
 if __name__ == '__main__':
 	main()
