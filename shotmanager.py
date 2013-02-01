@@ -7,7 +7,7 @@ import re
 import posixpath as unixpath
 from OrderedDict import OrderedDict
 
-import filebox, houbox
+import filebox
 
 class shotdata:
 	def __init__(self):
@@ -19,15 +19,26 @@ class shotdata:
 		self.head = 'root'
 		self.workdir = self.rootpath
 		self.software = {
-						'houdini':{'dir':'houdini', 'read':'hip', 'write':'hip', 'excute':'hython', 'initscript':
-									'''houbox.setVariable('SHOW', {show})
-									houbox.setVariable('SEQ', {seq})
-									houbox.setVariable('SCENE', {scene})
-									houbox.setVariable('SHOT', {shot})''',
-									}, 
-						'maya':{'dir':'maya/scenes', 'read':['ma', 'mb'], 'write':'mb'},
-						'max':{'dir':'max', 'read':'max', 'write':'max'}
-						}
+			'houdini':
+			{'dir':'houdini', 'read':'hip', 'write':'hip', 'excute':'hython', 
+			'initscript':
+			'''
+import houbox
+houbox.setVariable('SHOW', '{show}')
+houbox.setVariable('SEQ', '{seq}')
+houbox.setVariable('SCENE', '{scene}')
+houbox.setVariable('SHOT', '{shot}')
+houbox.setVariable('JOB', '{shotpath}')
+houbox.setVariable('OUTPATH', '{outpath}')
+hou.hipFile.save('{file}')
+			''' }, 
+
+			'maya':
+			{'dir':'maya/scenes', 'read':['ma', 'mb'], 'write':'mb'},
+
+			'max':
+			{'dir':'max', 'read':'max', 'write':'max'}
+		}
 		# self.struct = None
 		self.use = 'houdini'
 		self.structfile = '.showStruct'
@@ -131,12 +142,12 @@ class shotdata:
 		rest = re.compile('[_.]?v?\d*[.]\w+$')
 		tasks = [rest.sub('', i) for i in tasks]
 		tasks = sorted(list(set(tasks)))
-		tasks.reverse()
 		return tasks
 
 	def returnRevs(self, items, task):
 		'''it takes files and return revs'''
-		revs = [i for i in items if task in i]
+		revs = [i for i in items if self.fileprepath()+'.'+task in i]
+		revs.reverse()
 		return revs
 
 	def showMessage(self):
@@ -269,9 +280,9 @@ class shotdata:
 		if dest == 'show':
 			A, B, C = 'seq/scene/shot', 'scene/shot', 'shot'
 			print('choose one of these types')
-			print('1. show/'+A)
-			print('2. show/'+B)
-			print('3. show/'+C)
+			print('1. show/' + A)
+			print('2. show/' + B)
+			print('3. show/' + C)
 
 			ui = raw_input()
 			try:
@@ -288,9 +299,6 @@ class shotdata:
 			self.newshot(name)
 		elif dest in ['task', 'rev']:
 			self.newtask(name)
-
-	def itempath(self, item):
-		return unixpath.join(self.workdir, item)
 
 	def newitem(self, dirname):
 		nd = unixpath.join(self.workdir, dirname)
@@ -311,19 +319,24 @@ class shotdata:
 		filebox.makeTree(path, 'shot')
 
 	def newtask(self, taskname):
-		filename = self.workdir + '/' + self.fileprepath() + '.' + taskname + '.v101.' + self.software[self.use]['write']
-		initpath = self.workdir + '/' + '{software}_init'.format(software=self.use())
-
-		with open(initpath, 'w') as f:
-			f.write(self.software[self.use]['initscript'])
+		struct = self.struct
+		file = self.workdir + '/' + self.fileprepath() + '.' + taskname + '.v101.' + self.software[self.use]['write']
+		initscript = self.workdir + '/' + '{software}_init'.format(software=self.use)
+		shotpath, outpath = self.workdir, self.workdir.replace('work', 'out')
+		with open(initscript, 'w') as f:
+			f.write(self.software[self.use]['initscript'].format(show=struct['show'], seq=struct['seq'], scene=struct['scene'], shot=struct['shot'], shotpath=shotpath, outpath=outpath, file=file))
 		
+		usesoft = self.software[self.use]
+		command = usesoft['excute'].format(file=file) + ' ' + initscript
 		print(command)
-		command = self.software[self.use]['newfile'].format(filename=filename)
 		os.system(command)
 
-		os.remove()
+		os.remove(initscript)
 		# with open(taskname) as f:
 		# 	f.write(taskname)
+
+	def itempath(self, item):
+		return unixpath.join(self.workdir, item)
 
 	def fileprepath(self):
 		struct = self.struct
