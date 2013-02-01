@@ -3,10 +3,11 @@
 import os
 import sys
 import env
-import filebox
 import re
 import posixpath as unixpath
 from OrderedDict import OrderedDict
+
+import filebox, houbox
 
 class shotdata:
 	def __init__(self):
@@ -18,7 +19,12 @@ class shotdata:
 		self.head = 'root'
 		self.workdir = self.rootpath
 		self.software = {
-						'houdini':{'dir':'houdini', 'read':'hip', 'write':'hip'}, 
+						'houdini':{'dir':'houdini', 'read':'hip', 'write':'hip', 'excute':'hython', 'initscript':
+									'''houbox.setVariable('SHOW', {show})
+									houbox.setVariable('SEQ', {seq})
+									houbox.setVariable('SCENE', {scene})
+									houbox.setVariable('SHOT', {shot})''',
+									}, 
 						'maya':{'dir':'maya/scenes', 'read':['ma', 'mb'], 'write':'mb'},
 						'max':{'dir':'max', 'read':'max', 'write':'max'}
 						}
@@ -65,8 +71,11 @@ class shotdata:
 		for s in vs:
 			if s not in rs:
 				try: 
-					self.printStruct.pop(s)
 					del struct[s] # 가변적인 틀중 샷과 맞지 않는 틀은 지움
+				except KeyError:
+					pass
+				try:
+					self.printStruct.pop(self.printStruct.index(s))
 				except:
 					pass
 
@@ -116,12 +125,13 @@ class shotdata:
 
 	def returnTasks(self, items):
 		'''it takes file list and return tasks'''
-		wd = self.workdir
-		files = [i for i in items if os.path.isfile(wd + '/' + i)]
-		rest = re.compile('[._]\D*\d*[.]\w+$')
-		tasks = [rest.sub('', i) for i in files]
+		
+		tasks = [i for i in items if os.path.isfile(self.workdir + '/' + i)]
+		tasks = [i.replace(self.fileprepath()+'.', '') for i in tasks if i.startswith(self.fileprepath())]
+		rest = re.compile('[_.]?v?\d*[.]\w+$')
+		tasks = [rest.sub('', i) for i in tasks]
 		tasks = sorted(list(set(tasks)))
-		# tasks.reverse()
+		tasks.reverse()
 		return tasks
 
 	def returnRevs(self, items, task):
@@ -182,7 +192,6 @@ class shotdata:
 					self.down(u)
 				else:
 					log += 'invalid input : {input}'.format(input=u)
-
 		
 		self.log = log
 
@@ -302,8 +311,17 @@ class shotdata:
 		filebox.makeTree(path, 'shot')
 
 	def newtask(self, taskname):
-		filename = self.fileprepath() + '.' + taskname + '.' + self.software[self.use]['write']
-		print(filename)
+		filename = self.workdir + '/' + self.fileprepath() + '.' + taskname + '.v101.' + self.software[self.use]['write']
+		initpath = self.workdir + '/' + '{software}_init'.format(software=self.use())
+
+		with open(initpath, 'w') as f:
+			f.write(self.software[self.use]['initscript'])
+		
+		print(command)
+		command = self.software[self.use]['newfile'].format(filename=filename)
+		os.system(command)
+
+		os.remove()
 		# with open(taskname) as f:
 		# 	f.write(taskname)
 
@@ -311,7 +329,7 @@ class shotdata:
 		struct = self.struct
 		bypasses = self.bypassStruct
 		show, shot = struct.keys().index('show'), struct.keys().index('shot')
-		vals = struct.values()[show : shot]
+		vals = struct.values()[show : shot+1]
 		pp = []
 		for k in vals:
 			if not k in bypasses:
