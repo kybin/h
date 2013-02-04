@@ -20,21 +20,25 @@ class shotdata:
 		self.workdir = self.rootpath
 		self.software = {
 			'houdini':
-			{'dir':'houdini', 'read':'hip', 'write':'hip', 'excute':'hython', 
-			'initscript':
+			{'dir':'houdini', 'read':'hip', 'write':'hip', 'batch':'hython', 'exe': 'houdini', 'initscript': 
 			'''
-import houbox
-houbox.setVariable('SHOW', '{show}')
-houbox.setVariable('SEQ', '{seq}')
-houbox.setVariable('SCENE', '{scene}')
-houbox.setVariable('SHOT', '{shot}')
-houbox.setVariable('JOB', '{shotpath}')
-houbox.setVariable('OUTPATH', '{outpath}')
+hou.hscript('set -g SHOW = {show}')
+hou.hscript('set -g SEQ = {seq}')
+hou.hscript('set -g SCENE = {scene}')
+hou.hscript('set -g SHOT = {shot}')
+hou.hscript('set -g JOB = {shotpath}')
+hou.hscript('set -g OUT = {outpath}')
 hou.hipFile.save('{file}')
-			''' }, 
+			'''
+			}, 
 
 			'maya':
-			{'dir':'maya/scenes', 'read':['ma', 'mb'], 'write':'mb'},
+			{'dir':'maya/scenes', 'read':['ma', 'mb'], 'write':'mb', 'batch':'mayabatch.exe -script', 'exe': 'maya', 'initscript':
+			'''
+file -rn "{file}";
+file -s;
+			'''
+			},
 
 			'max':
 			{'dir':'max', 'read':'max', 'write':'max'}
@@ -138,6 +142,7 @@ hou.hipFile.save('{file}')
 		'''it takes file list and return tasks'''
 		
 		tasks = [i for i in items if os.path.isfile(self.workdir + '/' + i)]
+		tasks = [i for i in tasks if self.software[self.use]['read'] in i]
 		tasks = [i.replace(self.fileprepath()+'.', '') for i in tasks if i.startswith(self.fileprepath())]
 		rest = re.compile('[_.]?v?\d*[.]\w+$')
 		tasks = [rest.sub('', i) for i in tasks]
@@ -253,11 +258,13 @@ hou.hipFile.save('{file}')
 	# user actions
 
 	def run(self, file):
-		os.system('start {0}'.format(file))
+		os.system('start "" {0} {1}'.format(self.software[self.use]['exe'], file))
+
 	def opendir(self):
 		d = self.workdir
 		d = d.replace('/', '\\') # explorer only care about windows style paths
 		os.system('explorer {dir}'.format(dir=d))
+
 	def changesoftware(self, sw):
 		if sw in self.software:
 			self.use = sw
@@ -305,7 +312,7 @@ hou.hipFile.save('{file}')
 		os.mkdir(nd)
 
 	def newshow(self, show, showtype):
-		path = self.itempath(show)
+		path = unixpath.join(self.workdir, show)
 		os.mkdir(path)
 		filebox.makeTree(path, 'show')
 		
@@ -314,29 +321,27 @@ hou.hipFile.save('{file}')
 			f.write(showtype)
 
 	def newshot(self, shot):
-		path = self.itempath(shot)
+		path = unixpath.join(self.workdir, shot)
 		os.mkdir(path)
+		os.makedirs(path.replace('work', 'output'))
 		filebox.makeTree(path, 'shot')
 
 	def newtask(self, taskname):
 		struct = self.struct
 		file = self.workdir + '/' + self.fileprepath() + '.' + taskname + '.v101.' + self.software[self.use]['write']
-		initscript = self.workdir + '/' + '{software}_init'.format(software=self.use)
-		shotpath, outpath = self.workdir, self.workdir.replace('work', 'out')
-		with open(initscript, 'w') as f:
-			f.write(self.software[self.use]['initscript'].format(show=struct['show'], seq=struct['seq'], scene=struct['scene'], shot=struct['shot'], shotpath=shotpath, outpath=outpath, file=file))
+		shotpath = self.workdir
+		outpath = self.outdir()
 		
-		usesoft = self.software[self.use]
-		command = usesoft['excute'].format(file=file) + ' ' + initscript
+		initscript = self.software[self.use]['initscript'].format(show=struct['show'], seq=struct['seq'], scene=struct['scene'], shot=struct['shot'], shotpath=shotpath, outpath=outpath, file=file)
+		scriptfile = unixpath.join(self.workdir, '.temp_init')
+		with open(scriptfile, 'w') as f:
+			f.write(initscript)
+		
+		command = self.software[self.use]['batch'].format(file=file) + ' ' + scriptfile
 		print(command)
 		os.system(command)
-
-		os.remove(initscript)
-		# with open(taskname) as f:
-		# 	f.write(taskname)
-
-	def itempath(self, item):
-		return unixpath.join(self.workdir, item)
+		os.remove(scriptfile)
+		self.run(file)
 
 	def fileprepath(self):
 		struct = self.struct
@@ -348,6 +353,10 @@ hou.hipFile.save('{file}')
 			if not k in bypasses:
 				pp.append(k)
 		return('_'.join(pp))
+
+	def outdir(self):
+		return self.workdir.replace('work', 'output').replace(self.software[self.use]['dir'], '').rstrip('/')
+
 
 def main():
 	print('program in')
