@@ -10,6 +10,18 @@ work
 output
 }
 
+@show
+{
+common
+	reference
+	camera
+	geometry
+	bg
+	env
+work
+output
+}
+
 @shot
 {
 houdini
@@ -18,6 +30,8 @@ houdini
 	bgimage
 	shadow
 maya
+	scenes
+max
 }
 
 @out

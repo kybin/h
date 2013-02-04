@@ -48,8 +48,8 @@ def createdir(inputpath):
 
 def opendir(path):
     try:
-        openDir = os.listdir(path)
-        os.system('expolorer '+path)
+        # openDir = os.listdir(path)
+        os.system('explorer '+path)
     except:
         pass
 
@@ -121,7 +121,7 @@ def ParseTree(targetdir, dirlist, sep='\t'):
     os.chdir(oldpwd)
 
   
-def makeTree(targetDir, marker, dirTreeFile='T:/03_RnD_server/Project/__setting__/folder_tree.txt'):
+def makeTree(targetDir, marker, dirTreeFile='folder_tree.txt'):
 
     directoryList = findMarkerArea(dirTreeFile, marker)
     if directoryList == []:
