@@ -1,13 +1,16 @@
 # coding:utf-8
 
+# general script
 import os
 import sys
 import env
 import re
 import posixpath as unixpath
 from OrderedDict import OrderedDict
+# my script
+import maketree
 
-import filebox
+
 
 class shotdata:
 	def __init__(self):
@@ -26,6 +29,7 @@ hou.hscript('set -g SHOW = {show}')
 hou.hscript('set -g SEQ = {seq}')
 hou.hscript('set -g SCENE = {scene}')
 hou.hscript('set -g SHOT = {shot}')
+hou.hscript('set -g TASK = {task}')
 hou.hscript('set -g JOB = {shotpath}')
 hou.hscript('set -g OUT = {outpath}')
 hou.hipFile.save('{file}')
@@ -65,7 +69,7 @@ file -s;
 			('task'	, ''),
 			('rev'	, '')
 			])
-		self.printStruct = ['show', 'seq', 'scene', 'shot']
+		self.printStruct = ['show', 'seq', 'scene', 'shot', 'task', 'rev']
 
 	def update(self):
 		''' update status : workdir, dirlists ... '''
@@ -156,16 +160,34 @@ file -s;
 		return revs
 
 	def showMessage(self):
-		items = [' : '.join(['{0: >5}'.format(index+1),val]) for index,val in enumerate(self.items)]
+		os.system('cls')
+		items = [' : '.join(['{0: >4}'.format(index+1),val]) for index,val in enumerate(self.items)]
 		print
 		print('-'*75)
 		print('Shot Manager V{version}').format(version=self.version)
 		print('-'*75)
 		if self.head != 'root':
-			print('info : {0}'.format('/'.join(self.printStruct)))
-		print(self.nextHead())
-		print('\n'.join(items))
+			for s, n in self.hierachy():
+				if self.nextHead() != s:
+					print('{struct: >8} : {name}'.format(struct=s.upper(), name=n))
+				else:
+					print('-'*75)
+					print('< {struct} >'.format(struct=s.upper()))
+					print('\n'.join(items))	
+					break		
+		else:
+			print('\n'.join(items))			
+		print('-'*75)
+		# print(self.nextHead())
+		
 		print('>>>'),
+
+	def hierachy(self):
+		hierachy = []
+		for i in self.printStruct:
+			if i in self.struct:
+				hierachy.append((i, self.struct[i]))
+		return hierachy
 
 	def doSomething(self, userInput):
 		u = userInput.strip().lower()
@@ -314,7 +336,7 @@ file -s;
 	def newshow(self, show, showtype):
 		path = unixpath.join(self.workdir, show)
 		os.mkdir(path)
-		filebox.makeTree(path, 'show')
+		maketree.make('show', path)
 		
 		showfile = unixpath.join(path, self.structfile)
 		with open(showfile, 'w') as f:
@@ -324,7 +346,7 @@ file -s;
 		path = unixpath.join(self.workdir, shot)
 		os.mkdir(path)
 		os.makedirs(path.replace('work', 'output'))
-		filebox.makeTree(path, 'shot')
+		maketree.make('shot', path)
 
 	def newtask(self, taskname):
 		struct = self.struct
@@ -332,7 +354,7 @@ file -s;
 		shotpath = self.workdir
 		outpath = self.outdir()
 		
-		initscript = self.software[self.use]['initscript'].format(show=struct['show'], seq=struct['seq'], scene=struct['scene'], shot=struct['shot'], shotpath=shotpath, outpath=outpath, file=file)
+		initscript = self.software[self.use]['initscript'].format(show=struct['show'], seq=struct['seq'], scene=struct['scene'], shot=struct['shot'], task=taskname, shotpath=shotpath, outpath=outpath, file=file)
 		scriptfile = unixpath.join(self.workdir, '.temp_init')
 		with open(scriptfile, 'w') as f:
 			f.write(initscript)
