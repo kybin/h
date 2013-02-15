@@ -52,7 +52,6 @@ file -s;
 		self.structfile = '.showStruct'
 		self.variableStruct = ['seq', 'scene']
 		self.bypassStruct = ['work','software']
-		self.printStruct = ['show', 'seq', 'scene', 'shot']
 		self.runfile = ''
 		self.log = ''
 		self.resetStruct()
@@ -105,46 +104,46 @@ file -s;
 		return struct
 
 	def updateDir(self):
-		idx = min(self.headIndex(), self.struct.keys().index('software'))
+		# tasks and revs is not a dir, so we set our last dir is software level
+		idx = min(self.headindex(), self.struct.keys().index('software'))
 		wd = '/'.join(self.struct.values()[:idx+1])
 		print(wd)
 		if os.path.isdir(wd):
 			self.workdir = wd
 		else:
-			print('There is no such directory.')
+			print("There isn't such a directory.")
 			raise ValueError
 
+
+	## "Items" mean "Files and Directories" in current directory
 	def updateItems(self):
-		'''it takes workdir and return directory items'''
 		head = self.head
 		i = os.listdir(self.workdir)
-		i = self.cullItems(i)
+		i = self.itemcull(i)
 		if head in ['root', 'show', 'work', 'seq', 'scene', 'shot']:
-			i = self.returnDirs(i)
+			i = self.directories(i)
 		elif head == 'software':
-			i = self.returnTasks(i)
+			i = self.tasks(i)
 			self.struct['task']=i
 		elif head == 'task':
-			i = self.returnRevs(i, self.struct['task'])
+			i = self.revs(i, self.struct['task'])
 		else:
 			print('head is in a danger area! : {head}'.format(head=head))
-			raise
+			raise ValueError
 		self.items = i
 
-	def cullItems(self, items):
-		'''item startswith . or _ will pass'''
+	def itemcull(self, items):
+		'''item startswith . or _ will cull'''
 		culls = [i for i in items if not (i.startswith('.') or i.startswith('_'))]
 		return culls
 
-	def returnDirs(self, items):
+	def directories(self, items):
 		'''it takes items and return directories'''
 		wd = self.workdir
 		dirs = [i for i in items if os.path.isdir(wd + '/' + i)]
 		return dirs
 
-	def returnTasks(self, items):
-		'''it takes file list and return tasks'''
-		
+	def tasks(self, items):
 		tasks = [i for i in items if os.path.isfile(self.workdir + '/' + i)]
 		tasks = [i for i in tasks if self.software[self.use]['read'] in i]
 		tasks = [i.replace(self.fileprepath()+'.', '') for i in tasks if i.startswith(self.fileprepath())]
@@ -153,8 +152,7 @@ file -s;
 		tasks = sorted(list(set(tasks)))
 		return tasks
 
-	def returnRevs(self, items, task):
-		'''it takes files and return revs'''
+	def revs(self, items, task):
 		revs = [i for i in items if self.fileprepath()+'.'+task in i]
 		revs.reverse()
 		return revs
@@ -167,8 +165,8 @@ file -s;
 		print('Shot Manager V{version}').format(version=self.version)
 		print('-'*75)
 		if self.head != 'root':
-			for s, n in self.hierachy():
-				if self.nextHead() != s:
+			for s, n in self.printHierachy():
+				if self.nexthead() != s:
 					print('{struct: >8} : {name}'.format(struct=s.upper(), name=n))
 				else:
 					print('-'*75)
@@ -178,18 +176,16 @@ file -s;
 		else:
 			print('\n'.join(items))			
 		print('-'*75)
-		# print(self.nextHead())
-		
 		print('>>>'),
 
-	def hierachy(self):
+	def printHierachy(self):
 		hierachy = []
 		for i in self.printStruct:
 			if i in self.struct:
 				hierachy.append((i, self.struct[i]))
 		return hierachy
 
-	def doSomething(self, userInput):
+	def action(self, userInput):
 		u = userInput.strip().lower()
 
 		items = self.items
@@ -234,23 +230,18 @@ file -s;
 		self.log = log
 
 
+	# "head" means "Current Level"
+	def headshift(self, shift):
+		self.head = self.struct.keys()[self.headindex()+shift]
 
-	# head and position
-
-	def headShift(self, shift):
-		keys = self.struct.keys()
-		cur = self.headIndex()
-		new = keys[cur+shift]
-		self.head = new
-
-	def headIndex(self):
+	def headindex(self):
 		return self.struct.keys().index(self.head)
 
-	def nextHead(self):
-		return self.struct.keys()[self.headIndex()+1]
+	def nexthead(self):
+		return self.struct.keys()[self.headindex()+1]
 
-	def prevHead(self):
-		return self.struct.keys()[self.headIndex()-1]
+	def prevhead(self):
+		return self.struct.keys()[self.headindex()-1]
 
 	def top(self):
 		self.head = 'root'
@@ -258,23 +249,22 @@ file -s;
 
 	def up(self):
 		struct = self.struct
-		# self.headShift(-1)
 		if self.head in self.bypassStruct:
 			while self.head in self.bypassStruct:
-				self.headShift(-1)
+				self.headshift(-1)
 		struct[self.head]=''
-		self.headShift(-1)
+		self.headshift(-1)
 		print(self.head)
 
 	def down(self, dest):
 		struct = self.struct
-		if self.head != 'task':
-			self.headShift(1)
-			struct[self.head]=dest
-			while self.nextHead() in self.bypassStruct:
-				self.headShift(1)
-		else:
+		if self.head == 'task':
 			self.run(self.workdir + '/' + dest)
+		else:
+			self.headshift(1)
+			struct[self.head]=dest
+			while self.nexthead() in self.bypassStruct:
+				self.headshift(1)
 
 
 	# user actions
@@ -294,6 +284,7 @@ file -s;
 		else:
 			raise('there is no such software')
 
+	# additional functionallity...
 	def delete(self):
 		pass
 	def omit(self):
@@ -301,10 +292,9 @@ file -s;
 
 
 
-	# new file or something...
-
+	# new item functionallity
 	def new(self, name):
-		dest = self.nextHead()
+		dest = self.nexthead()
 
 		if dest == 'show':
 			A, B, C = 'seq/scene/shot', 'scene/shot', 'shot'
@@ -323,22 +313,22 @@ file -s;
 			self.newshow(name, showtype)
 
 		elif dest in ['seq', 'scene']:
-			self.newitem(name)
+			self.newdir(name)
 		elif dest == 'shot':
 			self.newshot(name)
 		elif dest in ['task', 'rev']:
 			self.newtask(name)
 
-	def newitem(self, dirname):
-		nd = unixpath.join(self.workdir, dirname)
-		os.mkdir(nd)
+	def newdir(self, dirname):
+		newdir = unixpath.join(self.workdir, dirname)
+		os.mkdir(newdir)
 
 	def newshow(self, show, showtype):
-		path = unixpath.join(self.workdir, show)
-		os.mkdir(path)
-		maketree.make('show', path)
+		newpath = unixpath.join(self.workdir, show)
+		os.mkdir(newpath)
+		maketree.make('show', newpath)
 		
-		showfile = unixpath.join(path, self.structfile)
+		showfile = unixpath.join(newpath, self.structfile)
 		with open(showfile, 'w') as f:
 			f.write(showtype)
 
@@ -366,15 +356,14 @@ file -s;
 		self.run(file)
 
 	def fileprepath(self):
+		prepath = []
 		struct = self.struct
-		bypasses = self.bypassStruct
 		show, shot = struct.keys().index('show'), struct.keys().index('shot')
-		vals = struct.values()[show : shot+1]
-		pp = []
-		for k in vals:
-			if not k in bypasses:
-				pp.append(k)
-		return('_'.join(pp))
+		paths = struct.values()[show : shot+1]
+		for p in paths:
+			if not p in self.bypassStruct:
+				prepath.append(p)
+		return('_'.join(prepath))
 
 	def outdir(self):
 		return self.workdir.replace('work', 'output').replace(self.software[self.use]['dir'], '').rstrip('/')
@@ -389,7 +378,7 @@ def main():
 		# raw_input()
 		shot.showMessage()
 		userInput = raw_input()
-		shot.doSomething(userInput)
+		shot.action(userInput)
 
 if __name__ == '__main__':
 	main()
