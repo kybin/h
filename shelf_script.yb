@@ -1,7 +1,0 @@
-import threading
-import pm_run
-
-
-if threading.activeCount()==1:
-    ui = threading.Thread(target=pm_run.get_window)
-    ui.start()
