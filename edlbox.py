@@ -15,45 +15,6 @@ import shutil
 import xlrd
 import sys
 
-
-def makeProjectDirs(rootdir, folderfile="c:\\tmp\\folders.txt"):
-    os.chdir(rootdir)
-    
-    with open(folderfile) as f:
-        lines = f.readlines()
-        
-        for i,line in enumerate(lines):
-            if line.strip() == '':
-                pass
-            else:
-                line = line.split('\n')[0]
-                depth = line.count("\t")
-                dirname = line.strip()
-                if i != len(lines)-1:
-                    nextdepth = lines[i+1].count("\t")
-                else:
-                    nextdepth = 0
-    
-                if not os.path.isdir(dirname):
-                    os.mkdir(dirname)
-                
-                if nextdepth == depth + 1:
-                    os.chdir(dirname)
-                    
-                elif nextdepth < depth:
-                    recurs = depth - nextdepth
-                    for i in range(recurs):
-                        os.chdir("..")
-                elif nextdepth == depth:
-                    pass
-                else:
-                    print("check your file")
-                    return
-                    
-                        
-
-
-
 def main():
     ## input check
     
@@ -158,16 +119,57 @@ def main():
 
     for row in range(partcell[0], len(partcol)):
         if partcol[row] != '':
-            copyrows.append(row)
+            copyrows.append((row,shotcol))
 
-    print copyrows
-    projectroot = "C:/tmp"
-    for i in copyrows:
-        sceneroot = cglist.cell(i,shotcol).value
-        os.chdir(projectroot)
-        os.mkdir(sceneroot)
-        makeProjectDirs("/".join([projectroot,sceneroot])
+
+    ## find excel's link list
+    ## if the link is matched with  then export srcpath to 
+    linkmap = cglist.hyperlink_map
     
+
+    copydata = []
+    for cell_num, srcpath in linkmap.items():
+        if cell_num in copyrows:
+            x,y = cell_num
+            copydata.append((cglist.cell(x,y).value, srcpath.url_or_path, cell_num))
+    
+#     print(copydata)
+
+
+
+    ## copy start
+    print("copy start!")
+    for shot, address, cell in copydata:
+        
+        srcroot = "/".join([projectroot, address])
+        destpath = "/".join([destroot, shot])
+        for path, dirs, files in os.walk(srcroot):
+            path = path.replace("\\", "/")
+            for dirname in fnmatch.filter(dirs, 'jpeg'):
+                relpath = os.path.relpath(path, srcroot)   
+                
+                if relpath == '.': # if srcfolder is direct child of srcroot 
+                    relpath = ''
+                
+                srcpath = "/".join([path, dirname])
+                eachdest = "/".join([destpath, relpath])
+                
+                if(os.path.isdir(destpath)!=True):
+                    print("copy {0} to {1}".format(srcpath, eachdest))
+                    #shutil.copytree(srcpath, destpath)
+                else:
+                    print("{0} is already exist. skip!".format(eachdest))
+                    print("for your information search cell : {0}".format(cell))
+# 
+#         if(os.path.isdir(destpath)!=True):
+#             print("{0} copying!".format(destpath))
+#             shutil.copytree(srcpath, destpath)  #, ignore=shutil.ignore_patterns('*.db')
+#         
+# 
+
+    print("done")
+
+
 
 if __name__ == '__main__':
 
