@@ -11,7 +11,6 @@ from OrderedDict import OrderedDict
 import maketree
 
 
-
 class shotdata:
 	def __init__(self):
 		self.version = '0.01'
@@ -23,8 +22,8 @@ class shotdata:
 		self.workdir = self.rootpath
 		self.software = {
 			'houdini':
-			{'dir':'houdini', 'read':'hip', 'write':'hip', 'batch':'hython', 'exe': 'houdini', 'initscript': 
-			'''
+			{'dir':'houdini', 'read':['hip'], 'write':'hip', 'batch':'hython', 'exe': 'houdini', 
+			'initscript' : '''
 hou.hscript('set -g SHOW = {show}')
 hou.hscript('set -g SEQ = {seq}')
 hou.hscript('set -g SCENE = {scene}')
@@ -32,30 +31,31 @@ hou.hscript('set -g SHOT = {shot}')
 hou.hscript('set -g TASK = {task}')
 hou.hscript('set -g JOB = {shotpath}')
 hou.hscript('set -g OUT = {outpath}')
-hou.hipFile.save('{file}')
-			'''
+hou.hipFile.save('{file}')'''
 			}, 
 
 			'maya':
-			{'dir':'maya/scenes', 'read':['ma', 'mb'], 'write':'mb', 'batch':'mayabatch.exe -script', 'exe': 'maya', 'initscript':
-			'''
+			{'dir':'maya/scenes', 'read':['ma', 'mb'], 'write':'mb', 'batch':'mayabatch.exe -script', 'exe': 'maya', 
+			'initscript':'''
 file -rn "{file}";
-file -s;
-			'''
+file -s;'''
 			},
 
 			'max':
-			{'dir':'max', 'read':'max', 'write':'max'}
+			{'dir':'max', 'read':['max'], 'write':'max'}
 		}
-		# self.struct = None
+
 		self.use = 'houdini'
 		self.structfile = '.showStruct'
 		self.variableStruct = ['seq', 'scene']
+		self.deletedStruct = []
 		self.bypassStruct = ['work','software']
 		self.runfile = ''
 		self.log = ''
 		self.resetStruct()
 
+
+	# struct
 	def resetStruct(self):
 		self.struct = OrderedDict([
 			('root', self.rootpath),
@@ -70,6 +70,14 @@ file -s;
 			])
 		self.printStruct = ['show', 'seq', 'scene', 'shot', 'task', 'rev']
 
+	def readStruct(self):
+		structfile = '/'.join([self.rootpath, self.struct['show'], self.structfile])
+		with open(structfile) as f:
+			struct = f.readline().strip('\n').split('/')
+		return struct
+
+
+	# update
 	def update(self):
 		''' update status : workdir, dirlists ... '''
 		head = self.head
@@ -86,22 +94,19 @@ file -s;
 
 		rs = self.readStruct()
 		vs = self.variableStruct
+		ds = self.deletedStruct
 		for s in vs:
 			if s not in rs:
 				try: 
 					del struct[s] # 가변적인 틀중 샷과 맞지 않는 틀은 지움
+					ds.append(s)
 				except KeyError:
+					print('this alread deleted : {0}'.format(s))
 					pass
 				try:
 					self.printStruct.pop(self.printStruct.index(s))
 				except:
 					pass
-
-	def readStruct(self):
-		structfile = '/'.join([self.rootpath, self.struct['show'], self.structfile])
-		with open(structfile) as f:
-			struct = f.readline().strip('\n').split('/')
-		return struct
 
 	def updateDir(self):
 		# tasks and revs is not a dir, so we set our last dir is software level
@@ -114,9 +119,7 @@ file -s;
 			print("There isn't such a directory.")
 			raise ValueError
 
-
-	## "Items" mean "Files and Directories" in current directory
-	def updateItems(self):
+	def updateItems(self): # "Items" mean "Files and Directories" in current directory
 		head = self.head
 		i = os.listdir(self.workdir)
 		i = self.itemcull(i)
@@ -132,37 +135,16 @@ file -s;
 			raise ValueError
 		self.items = i
 
-	def itemcull(self, items):
-		'''item startswith . or _ will cull'''
-		culls = [i for i in items if not (i.startswith('.') or i.startswith('_'))]
-		return culls
 
-	def directories(self, items):
-		'''it takes items and return directories'''
-		wd = self.workdir
-		dirs = [i for i in items if os.path.isdir(wd + '/' + i)]
-		return dirs
-
-	def tasks(self, items):
-		tasks = [i for i in items if os.path.isfile(self.workdir + '/' + i)]
-		tasks = [i for i in tasks if self.software[self.use]['read'] in i]
-		tasks = [i.replace(self.fileprepath()+'.', '') for i in tasks if i.startswith(self.fileprepath())]
-		rest = re.compile('[_.]?v?\d*[.]\w+$')
-		tasks = [rest.sub('', i) for i in tasks]
-		tasks = sorted(list(set(tasks)))
-		return tasks
-
-	def revs(self, items, task):
-		revs = [i for i in items if self.fileprepath()+'.'+task in i]
-		revs.reverse()
-		return revs
-
-	def showMessage(self):
+	# print
+	def printMessage(self):
 		os.system('cls')
 		items = [' : '.join(['{0: >4}'.format(index+1),val]) for index,val in enumerate(self.items)]
 		print
 		print('-'*75)
 		print('Shot Manager V{version}').format(version=self.version)
+		print('-'*75)
+		print('Info : {0}, {1}'.format(self.user, self.part))
 		print('-'*75)
 		if self.head != 'root':
 			for s, n in self.printHierachy():
@@ -170,7 +152,10 @@ file -s;
 					print('{struct: >8} : {name}'.format(struct=s.upper(), name=n))
 				else:
 					print('-'*75)
-					print('< {struct} >'.format(struct=s.upper()))
+					print('< {struct} >'.format(struct=s.upper())),
+					if self.nextIndex() in ['task', 'rev']:
+						print('- {0}'.format(self.use)),
+					print('\n')
 					print('\n'.join(items))	
 					break		
 		else:
@@ -178,13 +163,9 @@ file -s;
 		print('-'*75)
 		print('>>>'),
 
-	def printHierachy(self):
-		hierachy = []
-		for i in self.printStruct:
-			if i in self.struct:
-				hierachy.append((i, self.struct[i]))
-		return hierachy
 
+
+	# action
 	def action(self, userInput):
 		u = userInput.strip().lower()
 
@@ -201,9 +182,14 @@ file -s;
 		elif u.startswith('use '):
 			change, sw = u.split(' ')
 			self.changesoftware(sw)
+		elif u.startswith('part '):
+			self.part = u.split()[1]
+		elif u.startswith('name '):
+			self.user = u.split()[1]
 		elif u.startswith('new '):
-			new, name = u.split()
+			name = u.split()[1]
 			self.new(name)
+			self.part=name
 		elif u == '..':
 			self.up()
 		elif u == '/':
@@ -230,17 +216,39 @@ file -s;
 		self.log = log
 
 
-	# "head" means "Current Level"
-	def headshift(self, shift):
-		self.head = self.struct.keys()[self.headIndex()+shift]
+	# cull
+	def itemcull(self, items):
+		'''item startswith . or _ will cull'''
+		culls = [i for i in items if not (i.startswith('.') or i.startswith('_'))]
+		return culls
 
-	# head and position
+	def directories(self, items):
+		'''it takes items and return directories'''
+		wd = self.workdir
+		dirs = [i for i in items if os.path.isdir(wd + '/' + i)]
+		return dirs
 
+	def tasks(self, items):
+		files = [i for i in items if os.path.isfile(self.workdir + '/' + i)]
+		tasks = []
+		readExtensions = self.software[self.use]['read']
+		for e in readExtensions:
+			tasks += [f for f in files if e in f]
+		tasks = [i.replace(self.fileprepath()+'.', '') for i in tasks if i.startswith(self.fileprepath())]
+		rest = re.compile('[_.]?v?\d*[.]\w+$')
+		tasks = [rest.sub('', i) for i in tasks]
+		tasks = sorted(list(set(tasks)))
+		return tasks
+
+	def revs(self, items, task):
+		revs = [i for i in items if self.fileprepath()+'.'+task in i]
+		revs.reverse()
+		return revs
+
+
+	# head - "head" means "Current Level"
 	def headShift(self, shift):
-		keys = self.struct.keys()
-		cur = self.headIndex()
-		new = max(cur+shift, 0)
-		self.head = keys[new]
+		self.head = self.struct.keys()[self.headIndex()+shift]
 
 	def headIndex(self):
 		return self.struct.keys().index(self.head)
@@ -257,6 +265,8 @@ file -s;
 		else:
 			return self.struct.keys()[self.headIndex()-1]
 
+
+	# move
 	def top(self):
 		self.head = 'root'
 		self.resetStruct()
@@ -265,9 +275,9 @@ file -s;
 		struct = self.struct
 		if self.head in self.bypassStruct:
 			while self.head in self.bypassStruct:
-				self.headshift(-1)
+				self.headShift(-1)
 		struct[self.head]=''
-		self.headshift(-1)
+		self.headShift(-1)
 		print(self.head)
 
 	def down(self, dest):
@@ -281,32 +291,8 @@ file -s;
 			self.run(self.workdir + '/' + dest)
 
 
-	# user actions
 
-	def run(self, file):
-		os.system('start "" {0} {1}'.format(self.software[self.use]['exe'], file))
-
-	def opendir(self):
-		d = self.workdir
-		d = d.replace('/', '\\') # explorer only care about windows style paths
-		os.system('explorer {dir}'.format(dir=d))
-
-	def changesoftware(self, sw):
-		if sw in self.software:
-			self.use = sw
-			self.struct['software'] = self.software[self.use]['dir']
-		else:
-			print("there isn't such a software")
-
-	# additional functionallity...
-	def delete(self):
-		pass
-	def omit(self):
-		pass
-
-
-
-	# new item functionallity
+	# new
 	def new(self, name):
 		dest = self.nextIndex()
 
@@ -358,7 +344,11 @@ file -s;
 		file = self.workdir + '/' + self.fileprepath() + '.' + taskname + '.v101.' + self.software[self.use]['write']
 		shotpath = self.workdir
 		outpath = self.outdir()
-		
+
+		# before make script, we have to append deletedStruct to currentStruct so follow command won't make error
+		for s in self.deletedStruct:
+			struct[s]=''
+
 		initscript = self.software[self.use]['initscript'].format(show=struct['show'], seq=struct['seq'], scene=struct['scene'], shot=struct['shot'], task=taskname, shotpath=shotpath, outpath=outpath, file=file)
 		scriptfile = posixpath.join(self.workdir, '.temp_init')
 		with open(scriptfile, 'w') as f:
@@ -370,6 +360,30 @@ file -s;
 		os.remove(scriptfile)
 		self.run(file)
 
+
+	# user actions
+	def run(self, file):
+		os.system('start "" {0} {1}'.format(self.software[self.use]['exe'], file))
+
+	def opendir(self):
+		d = self.workdir
+		d = d.replace('/', '\\') # explorer only care about windows style paths
+		os.system('explorer {dir}'.format(dir=d))
+
+	def changesoftware(self, sw):
+		if sw in self.software:
+			self.use = sw
+			self.struct['software'] = self.software[self.use]['dir']
+		else:
+			print("there isn't such a software")
+
+	def delete(self):
+		pass
+	def omit(self):
+		pass
+
+
+	# utility
 	def fileprepath(self):
 		prepath = []
 		struct = self.struct
@@ -383,6 +397,14 @@ file -s;
 	def outdir(self):
 		return self.workdir.replace('work', 'output').replace(self.software[self.use]['dir'], '').rstrip('/')
 
+	def printHierachy(self):
+		hierachy = []
+		for i in self.printStruct:
+			if i in self.struct:
+				hierachy.append((i, self.struct[i]))
+		return hierachy
+
+
 
 def main():
 	print('program in')
@@ -391,7 +413,7 @@ def main():
 	# for i in range(1):
 		shot.update()
 		# raw_input()
-		shot.showMessage()
+		shot.printMessage()
 		userInput = raw_input()
 		shot.action(userInput)
 
