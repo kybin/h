@@ -14,8 +14,8 @@ output
 {
 common
 	reference
-	camera
 	geometry
+	camera
 	bg
 	env
 work
@@ -32,6 +32,7 @@ houdini
 maya
 	scenes
 max
+	scenes
 }
 
 @out

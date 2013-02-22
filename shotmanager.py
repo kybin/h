@@ -104,24 +104,14 @@ file -s;
 		return struct
 
 	def updateDir(self):
-<<<<<<< HEAD
-		idx = min(self.headIndex(), self.struct.keys().index('software'))
-		print(self.headIndex())
-		print(self.head)
-=======
 		# tasks and revs is not a dir, so we set our last dir is software level
-		idx = min(self.headindex(), self.struct.keys().index('software'))
->>>>>>> 6d398c603063859ed360d6f007806018e7e83763
+		idx = min(self.headIndex(), self.struct.keys().index('software'))
 		wd = '/'.join(self.struct.values()[:idx+1])
 		print(wd)
 		if os.path.isdir(wd):
 			self.workdir = wd
 		else:
-<<<<<<< HEAD
-			print('There is not such a directory.')
-=======
 			print("There isn't such a directory.")
->>>>>>> 6d398c603063859ed360d6f007806018e7e83763
 			raise ValueError
 
 
@@ -175,13 +165,8 @@ file -s;
 		print('Shot Manager V{version}').format(version=self.version)
 		print('-'*75)
 		if self.head != 'root':
-<<<<<<< HEAD
-			for s, n in self.hierachy():
-				if self.nextIndex() != s:
-=======
 			for s, n in self.printHierachy():
 				if self.nexthead() != s:
->>>>>>> 6d398c603063859ed360d6f007806018e7e83763
 					print('{struct: >8} : {name}'.format(struct=s.upper(), name=n))
 				else:
 					print('-'*75)
@@ -191,11 +176,6 @@ file -s;
 		else:
 			print('\n'.join(items))			
 		print('-'*75)
-<<<<<<< HEAD
-		# print(self.nextIndex())
-		
-=======
->>>>>>> 6d398c603063859ed360d6f007806018e7e83763
 		print('>>>'),
 
 	def printHierachy(self):
@@ -254,7 +234,6 @@ file -s;
 	def headshift(self, shift):
 		self.head = self.struct.keys()[self.headindex()+shift]
 
-<<<<<<< HEAD
 	# head and position
 
 	def headShift(self, shift):
@@ -277,16 +256,6 @@ file -s;
 			return None
 		else:
 			return self.struct.keys()[self.headIndex()-1]
-=======
-	def headindex(self):
-		return self.struct.keys().index(self.head)
-
-	def nexthead(self):
-		return self.struct.keys()[self.headindex()+1]
-
-	def prevhead(self):
-		return self.struct.keys()[self.headindex()-1]
->>>>>>> 6d398c603063859ed360d6f007806018e7e83763
 
 	def top(self):
 		self.head = 'root'
@@ -294,11 +263,6 @@ file -s;
 
 	def up(self):
 		struct = self.struct
-<<<<<<< HEAD
-		print(self.struct)
-		# self.headShift(-1)
-=======
->>>>>>> 6d398c603063859ed360d6f007806018e7e83763
 		if self.head in self.bypassStruct:
 			while self.head in self.bypassStruct:
 				self.headshift(-1)
@@ -308,22 +272,13 @@ file -s;
 
 	def down(self, dest):
 		struct = self.struct
-<<<<<<< HEAD
 		if self.head != 'task':
 			self.headShift(1)
 			struct[self.head]=dest
 			while self.nextIndex() in self.bypassStruct:
 				self.headShift(1)
 		else:
-=======
-		if self.head == 'task':
->>>>>>> 6d398c603063859ed360d6f007806018e7e83763
 			self.run(self.workdir + '/' + dest)
-		else:
-			self.headshift(1)
-			struct[self.head]=dest
-			while self.nexthead() in self.bypassStruct:
-				self.headshift(1)
 
 
 	# user actions
@@ -353,11 +308,7 @@ file -s;
 
 	# new item functionallity
 	def new(self, name):
-<<<<<<< HEAD
 		dest = self.nextIndex()
-=======
-		dest = self.nexthead()
->>>>>>> 6d398c603063859ed360d6f007806018e7e83763
 
 		if dest == 'show':
 			A, B, C = 'seq/scene/shot', 'scene/shot', 'shot'
@@ -382,8 +333,7 @@ file -s;
 		elif dest in ['task', 'rev']:
 			self.newtask(name)
 
-<<<<<<< HEAD
-	def newitem(self, dirname):
+	def newdir(self, dirname):
 		nd = posixpath.join(self.workdir, dirname)
 		os.mkdir(nd)
 
@@ -393,18 +343,7 @@ file -s;
 		maketree.make('show', path)
 		
 		showfile = posixpath.join(path, self.structfile)
-=======
-	def newdir(self, dirname):
-		newdir = unixpath.join(self.workdir, dirname)
-		os.mkdir(newdir)
 
-	def newshow(self, show, showtype):
-		newpath = unixpath.join(self.workdir, show)
-		os.mkdir(newpath)
-		maketree.make('show', newpath)
-		
-		showfile = unixpath.join(newpath, self.structfile)
->>>>>>> 6d398c603063859ed360d6f007806018e7e83763
 		with open(showfile, 'w') as f:
 			f.write(showtype)
 
