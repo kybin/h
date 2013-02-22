@@ -5,7 +5,7 @@ import os
 import sys
 import env
 import re
-import posixpath as unixpath
+import posixpath
 from OrderedDict import OrderedDict
 # my script
 import maketree
@@ -106,12 +106,14 @@ file -s;
 
 	def updateDir(self):
 		idx = min(self.headIndex(), self.struct.keys().index('software'))
+		print(self.headIndex())
+		print(self.head)
 		wd = '/'.join(self.struct.values()[:idx+1])
 		print(wd)
 		if os.path.isdir(wd):
 			self.workdir = wd
 		else:
-			print('There is no such directory.')
+			print('There is not such a directory.')
 			raise ValueError
 
 	def updateItems(self):
@@ -168,7 +170,7 @@ file -s;
 		print('-'*75)
 		if self.head != 'root':
 			for s, n in self.hierachy():
-				if self.nextHead() != s:
+				if self.nextIndex() != s:
 					print('{struct: >8} : {name}'.format(struct=s.upper(), name=n))
 				else:
 					print('-'*75)
@@ -178,7 +180,7 @@ file -s;
 		else:
 			print('\n'.join(items))			
 		print('-'*75)
-		# print(self.nextHead())
+		# print(self.nextIndex())
 		
 		print('>>>'),
 
@@ -240,17 +242,23 @@ file -s;
 	def headShift(self, shift):
 		keys = self.struct.keys()
 		cur = self.headIndex()
-		new = keys[cur+shift]
-		self.head = new
+		new = max(cur+shift, 0)
+		self.head = keys[new]
 
 	def headIndex(self):
 		return self.struct.keys().index(self.head)
 
-	def nextHead(self):
-		return self.struct.keys()[self.headIndex()+1]
+	def nextIndex(self):
+		if self.headIndex() == 'rev':
+			return None
+		else:
+			return self.struct.keys()[self.headIndex()+1]
 
-	def prevHead(self):
-		return self.struct.keys()[self.headIndex()-1]
+	def prevIndex(self):
+		if self.headIndex() == 'root':
+			return None
+		else:
+			return self.struct.keys()[self.headIndex()-1]
 
 	def top(self):
 		self.head = 'root'
@@ -258,6 +266,7 @@ file -s;
 
 	def up(self):
 		struct = self.struct
+		print(self.struct)
 		# self.headShift(-1)
 		if self.head in self.bypassStruct:
 			while self.head in self.bypassStruct:
@@ -271,7 +280,7 @@ file -s;
 		if self.head != 'task':
 			self.headShift(1)
 			struct[self.head]=dest
-			while self.nextHead() in self.bypassStruct:
+			while self.nextIndex() in self.bypassStruct:
 				self.headShift(1)
 		else:
 			self.run(self.workdir + '/' + dest)
@@ -292,7 +301,7 @@ file -s;
 			self.use = sw
 			self.struct['software'] = self.software[self.use]['dir']
 		else:
-			raise('there is no such software')
+			print("there isn't such a software")
 
 	def delete(self):
 		pass
@@ -304,7 +313,7 @@ file -s;
 	# new file or something...
 
 	def new(self, name):
-		dest = self.nextHead()
+		dest = self.nextIndex()
 
 		if dest == 'show':
 			A, B, C = 'seq/scene/shot', 'scene/shot', 'shot'
@@ -330,20 +339,20 @@ file -s;
 			self.newtask(name)
 
 	def newitem(self, dirname):
-		nd = unixpath.join(self.workdir, dirname)
+		nd = posixpath.join(self.workdir, dirname)
 		os.mkdir(nd)
 
 	def newshow(self, show, showtype):
-		path = unixpath.join(self.workdir, show)
+		path = posixpath.join(self.workdir, show)
 		os.mkdir(path)
 		maketree.make('show', path)
 		
-		showfile = unixpath.join(path, self.structfile)
+		showfile = posixpath.join(path, self.structfile)
 		with open(showfile, 'w') as f:
 			f.write(showtype)
 
 	def newshot(self, shot):
-		path = unixpath.join(self.workdir, shot)
+		path = posixpath.join(self.workdir, shot)
 		os.mkdir(path)
 		os.makedirs(path.replace('work', 'output'))
 		maketree.make('shot', path)
@@ -355,7 +364,7 @@ file -s;
 		outpath = self.outdir()
 		
 		initscript = self.software[self.use]['initscript'].format(show=struct['show'], seq=struct['seq'], scene=struct['scene'], shot=struct['shot'], task=taskname, shotpath=shotpath, outpath=outpath, file=file)
-		scriptfile = unixpath.join(self.workdir, '.temp_init')
+		scriptfile = posixpath.join(self.workdir, '.temp_init')
 		with open(scriptfile, 'w') as f:
 			f.write(initscript)
 		
