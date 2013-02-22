@@ -34,13 +34,13 @@ class path:
 def unixpath(inputpath):
     return inputpath.replace('\\', '/')
 
-def versioncut(filename):
-    filename = re.sub('.?v?\d*.\w+$', '', filename)
+def prefix(filename):
+    filename = re.sub('[_.]?v?\d*[.]\w+$', '', filename)
     return filename
 
 def createdir(inputpath):
     if '/' in inputpath:
-        filepath = filebox.path(inputpath)
+        filepath = path(inputpath)
         if filepath.existDir() == False:
             print('\n'+filepath.directory)
             os.makedirs(filepath.directory)
@@ -52,88 +52,6 @@ def opendir(path):
         os.system('explorer '+path)
     except:
         pass
-
-
-def findMarkerArea(treefile, markername):
-    ''' It reads folder tree file. and make that tree in a target directory '''
-    
-    f = open(treefile)
-    lines = f.readlines()
-    f.close()
-
-    markerarea = []
-    searchtype = 'markersearch'
-    for line in lines:
-        if searchtype == 'markersearch':
-            if line.startswith('@'):
-                line = re.sub('@', '', line)
-                line = re.sub('\n', '', line)
-                line = line.strip()
-                if line == markername:
-                    searchtype = 'areasearch'
-                    areastart = 1
-        elif searchtype == 'areasearch':
-            if line in ['}','}\n']:
-                break
-            elif areastart == 0:
-                markerarea.append(line)
-            elif line == '{\n':
-                areastart = 0
-
-    return markerarea
-
-
-def ParseTree(targetdir, dirlist, sep='\t'):
-    oldpwd = os.path.abspath('.')
-    os.chdir(targetdir)    
-
-    for i,line in enumerate(dirlist):
-        
-        line = line.split('\n')[0]
-        depth = line.count(sep)
-        dirname = line.strip()
-        
-        if i != len(dirlist)-1:
-            nextdepth = dirlist[i+1].count('\t')
-        else:
-            nextdepth = 0
-
-#         print depth 
-#         print nextdepth
-
-        if not os.path.isdir(dirname):
-            os.mkdir(dirname)
-
-        if nextdepth == depth + 1:
-            os.chdir(dirname)
-
-            
-        elif nextdepth < depth:
-            recurs = depth - nextdepth
-            for i in range(recurs):
-                os.chdir('..')
-
-        elif nextdepth == depth:
-            pass
-        else:
-            print('check your file')
-
-    os.chdir(oldpwd)
-
-  
-def makeTree(targetDir, marker, dirTreeFile='folder_tree.txt'):
-
-    directoryList = findMarkerArea(dirTreeFile, marker)
-    if directoryList == []:
-        print('no marker area')
-    else:    
-        if not os.path.isdir(targetDir):
-            os.makedirs(targetDir)
-        #else:
-            #print('folder exist. make tree didn't complete')
-            #return False
-        ParseTree(targetDir, directoryList)
-
 
 def incBackup(inputpath, backupDirectory ='backup', backupName=None):
     # input : file path for backup
