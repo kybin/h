@@ -166,7 +166,7 @@ file -s;
 		print('-'*75)
 		if self.head != 'root':
 			for s, n in self.printHierachy():
-				if self.nexthead() != s:
+				if self.nextIndex() != s:
 					print('{struct: >8} : {name}'.format(struct=s.upper(), name=n))
 				else:
 					print('-'*75)
@@ -232,7 +232,7 @@ file -s;
 
 	# "head" means "Current Level"
 	def headshift(self, shift):
-		self.head = self.struct.keys()[self.headindex()+shift]
+		self.head = self.struct.keys()[self.headIndex()+shift]
 
 	# head and position
 
