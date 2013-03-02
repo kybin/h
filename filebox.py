@@ -20,10 +20,10 @@ class path:
         else: # if input is a directory path
             self.name = ''
             self.extension = ''
-            havelf.nameWithoutExtension = ''
+            self.nameWithoutExtension = ''
             self.directory = self.path
             self.parentdir = '/'.join(self.path.split('/')[:-1])
-    def exisidentical):
+    def exist(self):
         return os.path.isfile(self.path)
 
     def existDir(self):
