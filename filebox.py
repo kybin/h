@@ -3,7 +3,8 @@
 import os
 import re
 import shutil
-
+import posixpath as path
+import filecmp
 class path:
     def __init__(self, inputpath):
         self.inputpath = inputpath
@@ -31,7 +32,7 @@ class path:
     def existParentDir(self):
         return os.path.isdir(self.parentdir)
 
-def unixpath(inputpath):
+def convertToUnixpath(inputpath):
     return inputpath.replace('\\', '/')
 
 def prefix(filename):
@@ -45,7 +46,6 @@ def createdir(inputpath):
             print('\n'+filepath.directory)
             os.makedirs(filepath.directory)
 
-
 def opendir(path):
     try:
         # openDir = os.listdir(path)
@@ -53,39 +53,36 @@ def opendir(path):
     except:
         pass
 
-def incBackup(inputpath, backupDirectory ='backup', backupName=None):
-    # input : file path for backup
-    # results : save file incrementally
-
-    filepath = unixpath(inputpath)
-    dirpath = path(filepath).directory
-    basename = path(filepath).nameWithoutExtension
-    ext = path(filepath).extension
-
-    backupdir = '/'.join([dirpath, backupDirectory])
-
+def incBackup(inputpath, backupdirname ='backup'):
+    # check input
+    filepath = convertToUnixpath(inputpath)
     if not os.path.isfile(filepath):
-        print('file not exists : {path}'.format(path=filepath))
+        print('file not exists : {0}'.format(filepath))
         return False
 
-    if not os.path.isdir(backupdir):
-        os.makedirs(backupdir)
-        print('create directory : {backupdir}'.foramt(backupdir=backupdir))
+    dirpath, filename = path.split(filepath)
+    basename, ext = path.splitext(filename)
 
-    backupfiles = [f for f in os.listdir(backupdir) if f.startswith('{filename}_backup'.format(filename=basename))]
-    try:
+    # check backuppath
+    backuppath = '/'.join([dirpath, backupdirname])
+    if not os.path.isdir(backuppath):
+        os.makedirs(backuppath)
+        print('create directory : {0}'.foramt(backuppath))
+
+    backupfiles = [f for f in os.listdir(backuppath) if f.startswith(basename + '_backup')]
+    if backupfiles:
         backupfiles.sort()
         lastfile = backupfiles.pop()
-        lastpath = '/'.join([backupdir, lastfile])
+        lastpath = '/'.join([backuppath, lastfile])
         lastdigit = int(re.findall('(\d+)[.]\w+$', lastfile)[0])
-    except:
-        lastfile = None
+    else:
+        lastpath = None
         lastdigit = 0
   
     incname = '{basename}_backup{num}.{ext}'.format(basename=basename, num=str(lastdigit+1), ext=ext)
-    incpath = '/'.join([backupdir, incname])
+    incpath = '/'.join([backuppath, incname])
 
-    if lastfile and (os.path.getsize(filepath) != os.path.getsize(lastpath)) or (open(filepath,'r').read() != open(lastpath,'r').read()):
+    if lastpath and not filecmp.cmp(filepath, lastpath):
         shutil.copyfile(filepath, incpath)
 
 # not completed

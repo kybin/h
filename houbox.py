@@ -2,6 +2,7 @@ import hou
 import os
 import shutil
 import time
+# dependency
 import filebox
 
 def setVariable(name, value):
@@ -9,17 +10,24 @@ def setVariable(name, value):
     print("set {name} = {value}".format(name=name, value=value))
 
 def SaveBackupRender(node):
-	renderpath = node.parm('sopoutput').eval()
-
+	'''	this may useful for rop operators
+		rop_geometry, mantra, mdd, etc...
+	'''
+	# Save
 	if hou.hipFile.hasUnsavedChanges():
 		hou.hipFile.saveAsBackup()
 
-	src = hou.hipFile.path()
-	dstd = os.path.dirname(renderpath)
-	dstf = filebox.prefix(renderpath)+'.'+time.strftime('%Y_%m%d_%Hh%Mm%Ss', time.localtime())+'.hip'
-
-	if os.path.isdir(dstd):
-		shutil.copyfile(src, dstf)
-		node.parm('execute').pressButton()
+	# Backup
+	srcfile = hou.hipFile.path()
+	renderpath = node.parm('sopoutput').eval()
+	dstdir = os.path.dirname(renderpath)
+	dstfile = filebox.prefix(renderpath)+'.'+time.strftime('%Y_%m%d_%Hh%Mm%Ss', time.localtime())+'.hip'
+	
+	if os.path.isdir(dstdir):
+		shutil.copyfile(srcfile, dstfile)
 	else:
 		print("there isn't such a directory")
+		return False
+		
+	# Render
+	node.parm('execute').pressButton()
