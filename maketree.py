@@ -2,42 +2,34 @@
 import os
 import re
 import sys
-import posixpath
+import posixpath as path
 
 def __parseTree(treestr):
-	branches = [i.rstrip() for i in treestr.split('\n') if i.strip()]
-	# print(branches)
-	curtree= []
-	accumtree = []
+	branches = [i.rstrip() for i in treestr.splitlines() if i.strip()]
+	defaultdepth = branches[0].count('\t') # expand to spaces
 
-	if branches: # this is not perfect
-		defaultdepth = branches[0].count('\t')
-		# print(defaultdepth)
-		branches = [i.replace('\t', '', defaultdepth) for i in branches]
-		# print(branches)
-	else:
-		return None
-
+	dirs= []
+	tree = []
 	for b in branches:
-		depth, name = b.count('\t'), b.strip()
-		# print(depth, name)
-		curtree = curtree[:depth]
-		curtree.append(name)
-		#print(curtree)
+		dir = b.strip()
+		depth = b.count('\t')-defaultdepth
 
-		try:
-			curtree[depth]
-		except IndexError:
-			print('please check your tree : {0}'.format("/".join(curtree)))
-			return False
+		if depth < 0 or depth - len(dirs)  > 0: 
+			# if depth is below zero
+			# or "jumps forward" more than one step, then raise error
+			print('please check your tree : {0}'.format(path.join(*dirs)))
+			raise IndexError
 
-		accumtree.append('/'.join(curtree))
-	return accumtree
+		dirs = dirs[:depth]
+		dirs.append(dir)
+
+		tree.append(path.join(*dirs))
+	return tree
 
 
-def __importTrees(text):
+def __parseFile(text):
 	splits = re.findall(r'@\w+\s*\{.+?\}', text, re.S)
-	trees = {}
+	treedict = {}
 
 	for i in splits:
 		obj = re.compile(r'''
@@ -50,27 +42,29 @@ def __importTrees(text):
 			, re.S | re.X)
 
 		s = obj.search(i)
-		trees[s.group('name')]=s.group('value')
+		treedict[s.group('name')]=s.group('value')
 
-	return trees
+	return treedict
 
-def make(tree, dir):
+def make(treename, dir):
 	thisfilepath = os.path.dirname(os.path.realpath(__file__)).replace('\\', '/')
-	treefile = posixpath.join(thisfilepath, 'folder_tree.txt')
+	treefile = path.join(thisfilepath, 'folder_tree.txt')
 	with open(treefile) as f:
 		text = f.read()
 
-	imports = __importTrees(text)
-	branches = __parseTree(imports[tree])
+	treedict = __parseFile(text)
+	treestr = treedict[treename]
+	if treestr:
+		branches = __parseTree(treestr)
 
 	if branches:
 		for b in branches:
-				print(posixpath.join(dir, b))
-				os.makedirs(posixpath.join(dir, b))
-	elif branches is False:
-		print('Check tree "{name}"'.format(name=name))
-	elif branches is None:
-		print('No branches at "{name}"'.format(name=name))
+				print(path.join(dir, b))
+				os.makedirs(path.join(dir, b))
+	# elif branches is False:
+	# 	print('Check tree "{name}"'.format(name=name))
+	# elif branches is None:
+	# 	print('No branches at "{name}"'.format(name=name))
 	
 
 if __name__=="__main__":
