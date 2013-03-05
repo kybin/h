@@ -1,43 +1,43 @@
 @project
 {
-common
-	reference
-	camera
-	geometry
-	bg
-	env
-work
-output
+	common
+		reference
+		camera
+		geometry
+		bg
+		env
+	work
+	output
 }
 
 @show
 {
-common
-	reference
-	geometry
-	camera
-	bg
-	env
-work
-output
+	common
+		reference
+		geometry
+		camera
+		bg
+		env
+	work
+	output
 }
 
 @shot
 {
-houdini
-	camera
-	geometry
-	bgimage
-	shadow
-maya
-	scenes
-max
-	scenes
+	houdini
+		camera
+		geometry
+		bgimage
+		shadow
+	maya
+		scenes
+	max
+		scenes
 }
 
 @out
 {
-v01
-precomp
 	v01
+	precomp
+		v01
 }

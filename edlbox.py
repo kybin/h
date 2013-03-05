@@ -1,14 +1,3 @@
-#-------------------------------------------------------------------------------
-# Name:        module1
-# Purpose:
-#
-# Author:      yongbin
-#
-# Created:     19-09-2012
-# Copyright:   (c) yongbin 2012
-# Licence:     <your licence>
-#-------------------------------------------------------------------------------
-
 import os
 import fnmatch
 import shutil
