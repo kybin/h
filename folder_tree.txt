@@ -1,6 +1,7 @@
 @project
 {
 	common
+		@show
 		reference
 		camera
 		geometry
