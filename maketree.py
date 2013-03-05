@@ -46,14 +46,14 @@ def __parseFile(text):
 
 	return treedict
 
-def make(treename, dir):
+def make(tree, dir):
 	thisfilepath = os.path.dirname(os.path.realpath(__file__)).replace('\\', '/')
 	treefile = path.join(thisfilepath, 'folder_tree.txt')
 	with open(treefile) as f:
 		text = f.read()
 
 	treedict = __parseFile(text)
-	treestr = treedict[treename]
+	treestr = treedict[tree]
 	if treestr:
 		branches = __parseTree(treestr)
 
@@ -68,6 +68,5 @@ def make(treename, dir):
 	
 
 if __name__=="__main__":
-	tree = sys.argv[1]
-	curdir = os.getcwd().replace('\\', '/')
-	make(tree, curdir)
+	tree, dir = sys.argv[1:3]
+	make(tree, dir)
