@@ -37,11 +37,10 @@ def incBackup(inputpath, backupdirname ='backup', move=False):
         return False
 
     srcd, srcf = path.split(src)
-    srcbase, srcext = path.splitext(filename)
 
     # check backup dir, path
     dstd = path.join(srcd, backupdirname)
-    dstf = path.join(dstd, srcf)
+    dstp = path.join(dstd, srcf)
 
     # create backup dir
     if not path.isdir(dstd):
@@ -49,7 +48,7 @@ def incBackup(inputpath, backupdirname ='backup', move=False):
         print('create directory : {0}'.format(dstd))
 
     # inc filename
-    dstl = incFromLastFile(dstf)
+    dstl = incFromLastFile(dstp)
 
     if move:
         shutil.move(src, dstl)
