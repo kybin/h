@@ -1,36 +1,11 @@
 # coding=utf-8
-
 import os
 import re
 import shutil
 import posixpath as path
 import filecmp
-class path:
-    def __init__(self, inputpath):
-        self.inputpath = inputpath
-        self.path = inputpath.replace('\\', '/')
-        lastpath = self.path.split('/')[-1]
+from itertools import count as itercount
 
-        if '.' in lastpath:
-            self.name = lastpath
-            self.nameWithoutExtension = '.'.join(lastpath.split('.')[:-1])
-            self.extension = lastpath.split('.')[-1]
-            self.directory = '/'.join(self.path.split('/')[:-1])
-            self.parentdir = '/'.join(self.path.split('/')[:-2])
-        else: # if input is a directory path
-            self.name = ''
-            self.extension = ''
-            self.nameWithoutExtension = ''
-            self.directory = self.path
-            self.parentdir = '/'.join(self.path.split('/')[:-1])
-    def exist(self):
-        return os.path.isfile(self.path)
-
-    def existDir(self):
-        return os.path.isdir(self.directory)
-
-    def existParentDir(self):
-        return os.path.isdir(self.parentdir)
 
 def convertToUnixpath(inputpath):
     return inputpath.replace('\\', '/')
@@ -46,44 +21,73 @@ def createdir(inputpath):
             print('\n'+filepath.directory)
             os.makedirs(filepath.directory)
 
-def opendir(path):
+def opendir(dirpath):
     try:
-        # openDir = os.listdir(path)
-        os.system('explorer '+path)
+        os.system('explorer '+dirpath)
     except:
         pass
 
-def incBackup(inputpath, backupdirname ='backup'):
+def incBackup(inputpath, backupdirname ='backup', move=False):
     # check input
-    filepath = convertToUnixpath(inputpath)
-    if not os.path.isfile(filepath):
-        print('file not exists : {0}'.format(filepath))
+    src = convertToUnixpath(inputpath)
+    src = path.realpath(src)
+    
+    if not path.exists(src):
+        print('file not exists : {0}'.format(src))
         return False
 
-    dirpath, filename = path.split(filepath)
-    basename, ext = path.splitext(filename)
+    srcd, srcf = path.split(src)
+    srcbase, srcext = path.splitext(filename)
 
-    # check backuppath
-    backuppath = '/'.join([dirpath, backupdirname])
-    if not os.path.isdir(backuppath):
-        os.makedirs(backuppath)
-        print('create directory : {0}'.foramt(backuppath))
+    # check backup dir, path
+    dstd = path.join(srcd, backupdirname)
+    dstf = path.join(dstd, srcf)
 
-    backupfiles = [f for f in os.listdir(backuppath) if f.startswith(basename + '_backup')]
-    if backupfiles:
-        backupfiles.sort()
-        lastfile = backupfiles.pop()
-        lastpath = '/'.join([backuppath, lastfile])
-        lastdigit = int(re.findall('(\d+)[.]\w+$', lastfile)[0])
+    # create backup dir
+    if not path.isdir(dstd):
+        os.makedirs(dstd)
+        print('create directory : {0}'.format(dstd))
+
+    # inc filename
+    dstl = incFromLastFile(dstf)
+
+    if move:
+        shutil.move(src, dstl)
     else:
-        lastpath = None
-        lastdigit = 0
-  
-    incname = '{basename}_backup{num}.{ext}'.format(basename=basename, num=str(lastdigit+1), ext=ext)
-    incpath = '/'.join([backuppath, incname])
+        if path.isfile(src):
+            shutil.copy(src, dstl)
+        else:
+            shutil.copytree(src, dstl)
 
-    if lastpath and not filecmp.cmp(filepath, lastpath):
-        shutil.copyfile(filepath, incpath)
+
+def incFromLastFile(filepath):
+    '''
+    if file exist increment filename
+    '''
+    filepath = path.realpath(filepath)
+    if path.exists(filepath):
+        base, ext = path.splitext(filepath)
+        for v in itercount(1):
+            newpath = base+'_'+str(v)+ext
+            if not path.exists(newpath):
+                return newpath
+    return filepath
+
+def mkdirSilent(d):
+    try:
+        os.makedirs(d)
+    except OSError as err:
+        if err.errno == 17:
+            pass
+        else:
+            print("OS error({0}): {1}".format(e.errno, e.strerror))
+
+
+
+
+
+
+
 
 # not completed
 def __sortsequence(filelist):
