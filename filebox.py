@@ -30,7 +30,6 @@ def opendir(dirpath):
 def incBackup(inputpath, backupdirname ='backup', move=False):
     # check input
     src = convertToUnixpath(inputpath)
-    src = path.realpath(src)
     
     if not path.exists(src):
         print('file not exists : {0}'.format(src))
@@ -63,7 +62,6 @@ def incFromLastFile(filepath):
     '''
     if file exist increment filename
     '''
-    filepath = path.realpath(filepath)
     if path.exists(filepath):
         base, ext = path.splitext(filepath)
         for v in itercount(1):
