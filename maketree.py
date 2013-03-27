@@ -5,6 +5,7 @@ import sys
 import posixpath as path
 
 def __checkConflict(treename, treedict, recursionlist=[]):
+	print(treename, recursionlist)
 	if treename in recursionlist:
 		recursionlist.append(treename)
 		print('error : recursion conflict!')
@@ -13,7 +14,9 @@ def __checkConflict(treename, treedict, recursionlist=[]):
 
 	recursionlist.append(treename)
 	branches = [i.rstrip() for i in treedict[treename].splitlines() if i.strip()]
+	print(branches)
 	for b in branches:
+		print(b)
 		b = b.strip()
 		if b.startswith('@'):
 			treename = b.replace('@', '', 1)
@@ -79,7 +82,7 @@ def make(treename, dir):
 
 	treedict = __parseFile(text)
 	
-	__checkConflict(treename, treedict)	
+	# __checkConflict(treename, treedict)	
 	
 	treestr = treedict[treename]
 	if treestr:
@@ -88,7 +91,7 @@ def make(treename, dir):
 		if branches:
 			for b in branches:
 				print(path.join(dir, b))
-				# os.makedirs(path.join(dir, b))
+				os.makedirs(path.join(dir, b))
 	
 
 if __name__=="__main__":
