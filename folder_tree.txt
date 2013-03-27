@@ -1,7 +1,6 @@
 @project
 {
 	common
-		@show
 		reference
 		camera
 		geometry
@@ -25,15 +24,13 @@
 
 @shot
 {
-	houdini
-		camera
-		geometry
-		bgimage
-		shadow
-	maya
-		scenes
-	max
-		scenes
+	sourceimages
+		bg
+		texture
+	images
+	data
+	particles
+	scenes
 }
 
 @out
