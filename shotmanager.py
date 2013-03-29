@@ -91,8 +91,7 @@ file -s;'''
 	def resetStruct(self):
 		self.struct = OrderedDict([
 			('root', self.rootpath),
-			# ('show'	, ''),
-			('show'	, 'pd2'), # for prepath()
+			('show'	, ''),
 			('work'	, 'work'),
 			('seq'	, ''),
 			('scene', ''),
@@ -101,16 +100,15 @@ file -s;'''
 			('task'	, ''),
 			('rev'	, '')
 			])
-		# self.head = 'root'
-		self.head = 'work'
+		self.head = 'root'
 		self.variableStruct = ['seq', 'scene']
 		self.deletedStruct = []
 		self.bypassStruct = ['work','run']
 		self.printStruct = ['show', 'seq', 'scene', 'shot', 'task', 'rev']
 
 	def readStruct(self):
-		structfile = '/'.join([self.rootpath, 'FX', self.structfile])
-		# structfile = '/'.join([self.rootpath, self.struct['show'], self.structfile])
+		# structfile = '/'.join([self.rootpath, 'FX', self.structfile])
+		structfile = '/'.join([self.rootpath, self.struct['show'], self.structfile])
 		with open(structfile) as f:
 			struct = f.readline().strip('\n').split('/')
 		return struct
@@ -151,13 +149,13 @@ file -s;'''
 		# tasks and revs is not a dir, so we have to set our last dir
 		idx = min(self.headIndex(), self.struct.keys().index('task')-1)
 		limitedstruct = self.struct.values()[:idx+1]
-		limitedstruct[1] = 'FX' # will removed, only for dirname
+		# limitedstruct[1] = 'FX' # will removed, only for dirname
 		wd = '/'.join(limitedstruct)
 		# print(wd)
 		if os.path.isdir(wd):
 			self.workdir = wd
 		else:
-			print("There isn't such a directory.")
+			print("There isn't such a directory. {0}".format(wd))
 			raise ValueError
 
 	def updateItems(self): # "Items" means "Files and Directories" in current directory
@@ -191,7 +189,7 @@ file -s;'''
 
 	# print
 	def printMessage(self):
-		os.system('cls')
+		# os.system('cls')
 		items = [' : '.join(['{0: >4}'.format(idx+1),val]) for idx,val in enumerate(self.items)]
 		print('='*75)
 		# print('-'*75)
@@ -270,7 +268,8 @@ file -s;'''
 		elif lu.startswith('user '):
 			self.user = u.split()[1]
 		elif lu.startswith('del '):
-			self.user = u.split()[1]
+			delitem = u.split()[1]
+			self.delete(delitem)
 		elif lu.startswith('new '):
 			names = u.split()[1:]
 			for n in names:
@@ -463,6 +462,7 @@ file -s;'''
 	def newshow(self, show, showtype):
 		path = posixpath.join(self.workdir, show)
 		os.mkdir(path)
+		print('maketree!!!!!!!!!!!!!!!!!!!!!!!!')
 		maketree.make('show', path)
 		
 		showfile = posixpath.join(path, self.structfile)
@@ -522,6 +522,7 @@ file -s;'''
 	def delete(self, item):
 		''' delete function doesn't delete file, it just move item to _deleted directory '''
 		moveitem = posixpath.join(self.workdir, item)
+		# print(moveitem)
 		filebox.incBackup(moveitem, backupdirname ='_deleted', move=True)
 
 	def omit(self, item):
@@ -545,10 +546,10 @@ file -s;'''
 			return ''
 
 		paths = struct.values()[:idx+1]
-		try:
-			paths[1]='FX' # will removed
-		except IndexError:
-			pass
+		# try:
+		# 	paths[1]='FX' # will removed
+		# except IndexError:
+		# 	pass
 		structpath = []
 		for p in paths:
 			structpath.append(p)
@@ -604,6 +605,8 @@ def main():
 	try:
 		shot = ImportSetting()
 	except IOError:
+		shot = shotdata() # new shot
+	except WindowsError:
 		shot = shotdata() # new shot
 	# shot = shotdata()
 	while True:
