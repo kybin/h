@@ -17,17 +17,17 @@ def SaveBackupRender(node):
 	if hou.hipFile.hasUnsavedChanges():
 		hou.hipFile.saveAsBackup()
 
-	# Backup
-	srcfile = hou.hipFile.path()
+	# Backup - copy current working hip file to render directory
+	workingfile = hou.hipFile.path()
 	renderpath = node.parm('sopoutput').eval()
-	dstdir = os.path.dirname(renderpath)
-	dstfile = filebox.prefix(renderpath)+'.'+time.strftime('%Y_%m%d_%Hh%Mm%Ss', time.localtime())+'.hip'
+	renderdir = os.path.dirname(renderpath)
+	backupfile = filebox.prefix(renderpath)+'.'+time.strftime('%Y_%m%d_%Hh%Mm%Ss', time.localtime())+'.hip'
 	
-	if os.path.isdir(dstdir):
-		shutil.copyfile(srcfile, dstfile)
+	if os.path.isdir(renderdir):
+		shutil.copyfile(workingfile, backupfile)
 	else:
 		print("there isn't such a directory")
 		return False
 		
 	# Render
-	node.parm('execute').pressButton()
+	node.render()

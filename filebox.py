@@ -2,7 +2,7 @@
 import os
 import re
 import shutil
-import posixpath as path
+import os.path as path
 import filecmp
 from itertools import count as itercount
 
@@ -27,40 +27,32 @@ def opendir(dirpath):
     except:
         pass
 
-def incBackup(inputpath, backupdirname ='backup', move=False):
-    # check input
-    src = convertToUnixpath(inputpath)
-    
-    if not path.exists(src):
-        print('file not exists : {0}'.format(src))
+def incBackup(inputpath, backup_dirname ='backup', move=False):
+    if not path.exists(inputpath):
+        print('file not exists : {0}'.format(inputpath))
         return False
+    srcdir, srcfile = path.split(inputpath)
+    backupdir = path.join(srcdir, backup_dirname)
+    backupfile = path.join(backupdir, srcfile)
 
-    srcd, srcf = path.split(src)
+    if not path.isdir(backupdir):
+        os.makedirs(backupdir)
+        print('create directory : {0}'.format(backupdir))
 
-    # check backup dir, path
-    dstd = path.join(srcd, backupdirname)
-    dstp = path.join(dstd, srcf)
-
-    # create backup dir
-    if not path.isdir(dstd):
-        os.makedirs(dstd)
-        print('create directory : {0}'.format(dstd))
-
-    # inc filename
-    dstl = incFromLastFile(dstp)
+    dstlast = incFromLastFile(backupfile)
 
     if move:
-        shutil.move(src, dstl)
+        shutil.move(inputpath, dstlast)
     else:
-        if path.isfile(src):
-            shutil.copy(src, dstl)
-        else:
-            shutil.copytree(src, dstl)
+        if path.isfile(inputpath):
+            shutil.copy(inputpath, dstlast)
+        else: # dir
+            shutil.copytree(inputpath, dstlast)
 
 
 def incFromLastFile(filepath):
     '''
-    if file exist increment filename
+    if file exists increment filename
     '''
     if path.exists(filepath):
         base, ext = path.splitext(filepath)

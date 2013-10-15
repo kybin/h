@@ -1,13 +1,12 @@
 import os
 import shutil
 import filebox
-reload(filebox)
 
-def checkPadnumFromList(inputlist, minpad=4):
+def checkPadFromFiles(files, minpad=4):
     #if list of numbers in, this function calculate best padnum with that list"
-    lenlist = [len(str(i)) for i in inputlist]
+    lenlist = [len(str(i)) for i in files]
     lenlist.sort()
-    pad = inputlist[-1]+1
+    pad = inputlist[-1] + 1
         
     if pad < minpad:
         pad = minpad
