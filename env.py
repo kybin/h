@@ -1,7 +1,15 @@
-class path:
-	def __init__(self):
-		self.ProjectRoot = "C:/users/yongbin/dev/SHOW"
-		self.ProjectTree = "/home/yongbin/dev/pipl/folder_tree.txt"
+import os.path as ospath
 
-def projectpath(prj):
-	return '/'.join([path().ProjectRoot, prj])
+#class env:
+#	def __init__(self):
+#		self.ProjectRoot = ospath.expandUser('~/prj')
+#		self.ProjectTree = ospath.expandUser('~/dev/pipl/tree.txt')
+#
+#	def projectpath(self, prjname):
+#		return '/'.join([self.ProjectRoot, prjname])
+
+ProjectRoot = ospath.expanduser('~/prj')
+ProjectTree = ospath.expanduser('~/dev/pipl/tree.txt')
+
+def projectpath(prjname):
+	return '/'.join([ProjectRoot, prjname])

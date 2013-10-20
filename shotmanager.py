@@ -5,7 +5,7 @@ import os
 import sys
 import env
 import re
-import posixpath
+import os.path as ospath
 import pickle
 import shutil
 import itertools
@@ -22,9 +22,8 @@ class shotdata:
 	def __init__(self):
 		self.version = '0.02'
 		self.part = 'fx'
-		self.user = os.environ['USERNAME']
-
-		self.rootpath = env.path().ProjectRoot
+		self.user = getUser()
+		self.rootpath = env.ProjectRoot
 		self.workdir = self.rootpath
 		self.software = {
 			'houdini':
@@ -149,14 +148,13 @@ file -s;'''
 		# tasks and revs is not a dir, so we have to set our last dir
 		idx = min(self.headIndex(), self.struct.keys().index('task')-1)
 		limitedstruct = self.struct.values()[:idx+1]
-		# limitedstruct[1] = 'FX' # will removed, only for dirname
 		wd = '/'.join(limitedstruct)
-		# print(wd)
+		print(wd)
 		if os.path.isdir(wd):
 			self.workdir = wd
 		else:
-			print("There isn't such a directory. {0}".format(wd))
-			raise ValueError
+			raise ValueError("There isn't such a directory. {0}".format(wd))
+
 
 	def updateItems(self): # "Items" means "Files and Directories" in current directory
 		head = self.head
@@ -173,8 +171,8 @@ file -s;'''
 			print('head is in a danger area! : {head}'.format(head=head))
 			raise ValueError
 
-		if posixpath.isfile(posixpath.join(self.workdir, self.orderfile)):
-			orderfile = posixpath.join(self.workdir, self.orderfile)
+		if ospath.isfile(ospath.join(self.workdir, self.orderfile)):
+			orderfile = ospath.join(self.workdir, self.orderfile)
 			with open(orderfile) as f:
 				lines = f.read().splitlines()
 				for l in lines:
@@ -276,8 +274,8 @@ file -s;'''
 				print(n)
 				self.new(n)
 		elif u == 'order':
-			orderfile = posixpath.join(self.workdir, self.orderfile)
-			if not posixpath.isfile(orderfile):
+			orderfile = ospath.join(self.workdir, self.orderfile)
+			if not ospath.isfile(orderfile):
 				# self.updateItems()
 				with open(orderfile, 'w') as f:
 					for i in self.items:
@@ -401,7 +399,7 @@ file -s;'''
 		flist = sorted([f for f in flist if f.startswith(task)])
 		flist.reverse()
 		lastf = flist[0]
-		lastfpath = posixpath.join(self.workdir, lastf)
+		lastfpath = ospath.join(self.workdir, lastf)
 		self.lastrundir = dir
 		self.lastruntask = task
 		self.lastrunfile = lastfpath
@@ -448,7 +446,7 @@ file -s;'''
 		elif dest in ['task', 'rev']:
 			self.newtask(name)
 
-		# orderfile = posixpath.join(self.workdir, self.orderfile)
+		# orderfile = ospath.join(self.workdir, self.orderfile)
 		# with open(orderfile, 'a') as f:
 		# 	f.write(name)
 		# 	f.write('\n')
@@ -456,22 +454,22 @@ file -s;'''
 
 
 	def newdir(self, dirname):
-		nd = posixpath.join(self.workdir, dirname)
+		nd = ospath.join(self.workdir, dirname)
 		os.mkdir(nd)
 
 	def newshow(self, show, showtype):
-		path = posixpath.join(self.workdir, show)
+		path = ospath.join(self.workdir, show)
 		os.mkdir(path)
 		print('maketree!!!!!!!!!!!!!!!!!!!!!!!!')
 		maketree.make('show', path)
 		
-		showfile = posixpath.join(path, self.structfile)
+		showfile = ospath.join(path, self.structfile)
 
 		with open(showfile, 'w') as f:
 			f.write(showtype)
 
 	def newshot(self, shot):
-		path = posixpath.join(self.workdir, shot)
+		path = ospath.join(self.workdir, shot)
 		os.mkdir(path)
 		# os.makedirs(path.replace(self.struct['work'], 'output', 1))
 		maketree.make('shot', path)
@@ -481,7 +479,7 @@ file -s;'''
 		structname = self.structname
 		structpath = self.structpath
 		filename = '.'.join([self.fileprepath(), taskname, 'v101', self.software[self.use]['write']])
-		filepath = posixpath.join(self.workdir, filename)
+		filepath = ospath.join(self.workdir, filename)
 		shotpath = self.shotpath()
 		renderpath = self.renderpath()
 
@@ -495,7 +493,7 @@ file -s;'''
 			showpath = structpath('show'), seqpath=structpath('seq'), scenepath=structpath('scene'), taskpath=structpath('run'),
 			shotpath=shotpath, renderpath=renderpath, filepath=filepath,
 			fps=24, start=(startf-1)/fps, end=endf/fps)
-		scriptfile = posixpath.join(self.workdir, '.temp_init')
+		scriptfile = ospath.join(self.workdir, '.temp_init')
 		with open(scriptfile, 'w') as f:
 			f.write(initscript)
 		
@@ -520,15 +518,14 @@ file -s;'''
 			print("there isn't such a software")
 
 	def delete(self, item):
-		''' delete function doesn't delete file, it just move item to _deleted directory '''
-		moveitem = posixpath.join(self.workdir, item)
-		# print(moveitem)
-		filebox.incBackup(moveitem, backupdirname ='_deleted', move=True)
+		''' Move a dir or file to _deleted directory '''
+		itempath = ospath.join(self.workdir, item)
+		filebox.incBackup(itempath, backupdirname ='_deleted', move=True)
 
 	def omit(self, item):
-		'''	it move item to _omitted directory '''
-		moveitem = posixpath.join(self.workdir, item)
-		filebox.incBackup(moveitem, backupdirname ='_omitted', move=True)
+		''' Move a dir or file to _omitted directory '''
+		itempath = ospath.join(self.workdir, item)
+		filebox.incBackup(itempath, backupdirname ='_omitted', move=True)
 
 
 	# utility
@@ -570,7 +567,7 @@ file -s;'''
 		return self.workdir.replace(self.software[self.use]['dir'], '').rstrip('/')
 
 	def renderpath(self):
-		return posixpath.join(self.shotpath(), 'images')
+		return ospath.join(self.shotpath(), 'images')
 
 	def printHierachy(self):
 		hierachy = []
@@ -582,14 +579,14 @@ file -s;'''
 
 
 # Import and Export Settings
-settingfile = os.path.join(os.path.expanduser('~'), '.shotmanager')
+settingfile = ospath.expanduser('~/.shotmanager')
 	
 def ImportSetting():
-	if posixpath.getctime(settingfile) < posixpath.getmtime(sys.argv[0]):
+	if ospath.getctime(settingfile) < ospath.getmtime(sys.argv[0]):
 		raise IOError
 	with open(settingfile, 'r') as f:
 		shotdata = pickle.load(f)
-		if not posixpath.isdir(shotdata.workdir):
+		if not ospath.isdir(shotdata.workdir):
 			raise IOError
 		return shotdata
 
@@ -597,8 +594,11 @@ def ExportSetting(shotclass):
 	with open(settingfile, 'w') as f:
 		pickle.dump(shotclass, f)
 
-
-
+def getUser():
+	for name in ('LOGNAME', 'USER', 'LNAME', 'USERNAME'):
+		user = os.environ.get(name)
+		if user:
+			return user
 
 # Start here
 def main():
@@ -606,7 +606,7 @@ def main():
 		shot = ImportSetting()
 	except IOError:
 		shot = shotdata() # new shot
-	except WindowsError:
+	except OSError:
 		shot = shotdata() # new shot
 	# shot = shotdata()
 	while True:
