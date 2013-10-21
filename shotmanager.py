@@ -119,7 +119,7 @@ file -s;'''
 		head = self.head
 		if head == 'root':
 			self.resetStruct()
-		if head == 'work': # 원래 쇼였을때 실행되어야하나 down() 실행시 바로 넘어가 버리기 때문에 work로 지정
+		if head == 'show': # 원래 쇼였을때 실행되어야하나 down() 실행시 바로 넘어가 버리기 때문에 work로 지정
 			self.updateShow() 
 		self.updateDir()
 		self.updateItems()
@@ -590,7 +590,7 @@ def ImportSetting():
 			raise IOError
 		return shotdata
 
-def ExportSetting(shotclass):
+def ExportToFile(shotclass):
 	with open(settingfile, 'w') as f:
 		pickle.dump(shotclass, f)
 
@@ -611,8 +611,8 @@ def main():
 	# shot = shotdata()
 	while True:
 	# for i in range(1):
-		shot.update()
-		ExportSetting(shot)
+		#shot.update()
+		ExportToFile(shot)
 		shot.printMessage()
 		userInput = raw_input()
 		if userInput in ['help', '/?', '/help']:
