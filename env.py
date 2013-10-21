@@ -9,7 +9,7 @@ import os.path as ospath
 #		return '/'.join([self.ProjectRoot, prjname])
 
 ProjectRoot = ospath.expanduser('~/prj')
-ProjectTree = ospath.expanduser('~/dev/pipl/tree.txt')
+ProjectTree = ospath.expanduser('~/dev/pipl/folder_tree.txt')
 
 def projectpath(prjname):
 	return '/'.join([ProjectRoot, prjname])

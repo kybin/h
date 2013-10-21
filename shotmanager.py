@@ -106,7 +106,6 @@ file -s;'''
 		self.printStruct = ['show', 'seq', 'scene', 'shot', 'task', 'rev']
 
 	def readStruct(self):
-		# structfile = '/'.join([self.rootpath, 'FX', self.structfile])
 		structfile = '/'.join([self.rootpath, self.struct['show'], self.structfile])
 		with open(structfile) as f:
 			struct = f.readline().strip('\n').split('/')
@@ -137,7 +136,7 @@ file -s;'''
 					del struct[s] # 가변적인 틀중 샷과 맞지 않는 틀은 지움
 					ds.append(s)
 				except KeyError:
-					print('this already deleted : {0}'.format(s))
+					print('{0} already deleted'.format(s))
 					pass
 				try:
 					self.printStruct.pop(self.printStruct.index(s))
@@ -145,7 +144,7 @@ file -s;'''
 					pass
 
 	def updateDir(self):
-		# tasks and revs is not a dir, so we have to set our last dir
+		# tasks and revs are not a dir, so we have to set our last dir
 		idx = min(self.headIndex(), self.struct.keys().index('task')-1)
 		limitedstruct = self.struct.values()[:idx+1]
 		wd = '/'.join(limitedstruct)
@@ -250,14 +249,12 @@ file -s;'''
 		workdir = self.workdir
 		loweritems = [i.lower() for i in items]
 
-		if not u:
-			pass
-
-		elif lu in ['q', 'quit']:
+		if (not u) or (u in ['help', '/?', '/help']):
+			self.printHelp()	
+		elif lu in ['q', 'quit', 'exit']:
 			sys.exit('Bye!')
 		elif lu in ['o', 'open']:		
 			self.opendir()
-
 		elif lu.startswith('use '):
 			change, sw = u.split(' ')
 			self.changesoftware(sw)
@@ -293,7 +290,6 @@ file -s;'''
 			self.top()
 		elif u == '.':
 			self.log=workdir # will replace function -> copy directory path
-
 		else:
 			if u.isdigit():
 				u = int(u)
@@ -403,11 +399,11 @@ file -s;'''
 		self.lastrundir = dir
 		self.lastruntask = task
 		self.lastrunfile = lastfpath
-		os.system('start "" {0} {1}'.format(self.software[self.use]['execute'], lastfpath))
+		os.system('{0} {1}'.format(self.software[self.use]['execute'], lastfpath))
 
 	def runFile(self, file):
 		print(self.use, self.software[self.use])
-		os.system('start "" {0} {1}'.format(self.software[self.use]['execute'], file))
+		os.system('{0} {1}'.format(self.software[self.use]['execute'], file))
 
 	def runLastTask(self):
 		if self.lastrundir and self.lastruntask:
@@ -507,8 +503,8 @@ file -s;'''
 
 	# other actions
 	def opendir(self):
-		dir = self.workdir.replace('/', '\\') # explorer only care about windows style paths
-		os.system('explorer {dir}'.format(dir=dir))
+		dir = self.workdir
+		os.system('thunar {dir}'.format(dir=dir))
 
 	def changesoftware(self, sw):
 		if sw in self.software:
@@ -608,17 +604,18 @@ def main():
 		shot = shotdata() # new shot
 	except OSError:
 		shot = shotdata() # new shot
+	# except Error as e:
+	# 	raise(e)
 	# shot = shotdata()
 	while True:
-	# for i in range(1):
 		shot.update()
 		ExportSetting(shot)
 		shot.printMessage()
 		userInput = raw_input()
-		if userInput in ['help', '/?', '/help']:
-			shot.printHelp()
-		else:
-			shot.action(userInput)
+		#if userInput in ['help', '/?', '/help']:
+		#	shot.printHelp()
+		#else:
+		shot.action(userInput)
 
 if __name__ == '__main__':
 	main()
