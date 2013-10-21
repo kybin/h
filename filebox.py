@@ -27,17 +27,17 @@ def opendir(dirpath):
     except:
         pass
 
-def incBackup(inputpath, backup_dirname ='backup', move=False):
+def incBackup(inputpath, backupdir ='backup', move=False):
     if not path.exists(inputpath):
         print('file not exists : {0}'.format(inputpath))
         return False
     srcdir, srcfile = path.split(inputpath)
-    backupdir = path.join(srcdir, backup_dirname)
-    backupfile = path.join(backupdir, srcfile)
+    backupdirpath = path.join(srcdir, backupdir)
+    backupfile = path.join(backupdirpath, srcfile)
 
-    if not path.isdir(backupdir):
-        os.makedirs(backupdir)
-        print('create directory : {0}'.format(backupdir))
+    if not path.isdir(backupdirpath):
+        os.makedirs(backupdirpath)
+        print('create directory : {0}'.format(backupdirpath))
 
     dstlast = incFromLastFile(backupfile)
 
