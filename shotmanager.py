@@ -1,6 +1,6 @@
 # coding:utf-8
 
-# general script
+# standard module 
 import os
 import sys
 import env
@@ -9,14 +9,10 @@ import os.path as ospath
 import pickle
 import shutil
 import itertools
-
 # external module
 import maketree
 import filebox
 from OrderedDict import OrderedDict
-
-
-
 
 class shotdata:
 	def __init__(self):
@@ -76,12 +72,13 @@ file -s;'''
 
 		self.use = 'houdini'
 		self.renderdir = 'images'
-		self.structfile = '.showStruct'
+		self.structfile = '.showinfo'
 		self.orderfile = '.order'
 		self.runfile = ''
 		self.lastrundir = ''
 		self.lastruntask = ''
 		self.lastrunfile = ''
+		self.items=[]
 		self.log = ''
 		self.resetStruct()
 
@@ -100,17 +97,20 @@ file -s;'''
 			('rev'	, '')
 			])
 		self.head = 'root'
-		self.variableStruct = ['seq', 'scene']
-		self.deletedStruct = []
+		self.showStruct = ['show', 'work', 'seq', 'scene', 'shot']
 		self.bypassStruct = ['work','run']
 		self.printStruct = ['show', 'seq', 'scene', 'shot', 'task', 'rev']
 
-	def readStruct(self):
-		structfile = '/'.join([self.rootpath, self.struct['show'], self.structfile])
+	def readCurrentShowInfo(self):
+		'''	Update show struct, there are 3 struct types. 
+		show/work/seq/scene/shot 
+		show/work/scene/shot 
+		show/work/shot
+		'''
+		print(self.struct['show'])
+		structfile = ospath.join(self.rootpath, self.struct['show'], '.showinfo')
 		with open(structfile) as f:
-			struct = f.readline().strip('\n').split('/')
-		return struct
-
+			self.showStruct = f.readline().strip('\n').split('/')
 
 	# update
 	def update(self):
@@ -118,33 +118,13 @@ file -s;'''
 		head = self.head
 		if head == 'root':
 			self.resetStruct()
-		if head == 'show': # 원래 쇼였을때 실행되어야하나 down() 실행시 바로 넘어가 버리기 때문에 work로 지정
-			self.updateShow() 
+		if head == 'show':
+			self.readCurrentShowInfo() 
 		self.updateDir()
 		self.updateItems()
 
-	def updateShow(self):
-		'''update show struct'''
-		struct = self.struct
-
-		rs = self.readStruct()
-		vs = self.variableStruct
-		ds = self.deletedStruct
-		for s in vs:
-			if s not in rs:
-				try: 
-					del struct[s] # 가변적인 틀중 샷과 맞지 않는 틀은 지움
-					ds.append(s)
-				except KeyError:
-					print('{0} already deleted'.format(s))
-					pass
-				try:
-					self.printStruct.pop(self.printStruct.index(s))
-				except:
-					pass
-
 	def updateDir(self):
-		# tasks and revs are not a dir, so we have to set our last dir
+		''' Tasks and revs are not a dir, so we have to set our last dir '''
 		idx = min(self.headIndex(), self.struct.keys().index('task')-1)
 		limitedstruct = self.struct.values()[:idx+1]
 		wd = '/'.join(limitedstruct)
@@ -154,10 +134,12 @@ file -s;'''
 		else:
 			raise ValueError("There isn't such a directory. {0}".format(wd))
 
-
-	def updateItems(self): # "Items" means "Files and Directories" in current directory
+	def updateItems(self):
+		''' update items (files and directories) in current directory'''
 		head = self.head
 		items = os.listdir(self.workdir)
+		#print(items)
+		#self.log+=items
 		items = self.itemculling(items)
 		if self.headIndex() <= self.headIndex('shot'):
 			items = self.directories(items)
@@ -167,8 +149,7 @@ file -s;'''
 		elif head == 'task':
 			items = self.revs(items, self.struct['task'])
 		else:
-			print('head is in a danger area! : {head}'.format(head=head))
-			raise ValueError
+			raise KeyError('head is in a danger area! : {0}'.format(head))
 
 		if ospath.isfile(ospath.join(self.workdir, self.orderfile)):
 			orderfile = ospath.join(self.workdir, self.orderfile)
@@ -176,11 +157,8 @@ file -s;'''
 				lines = f.read().splitlines()
 				for l in lines:
 					if l not in items:
-						print('item does not match with order file. fix or delete `{0}`'.format(orderfile))
-						sys.exit(1)
+						raise ValueError('item does not match with order file. fix or delete `{0}`'.format(orderfile))
 			items = lines
-
-
 		self.items = items
 
 
@@ -237,17 +215,14 @@ file -s;'''
 		print('if you want to change to houdini : (use houdini)')
 		print('-'*75)
 		print
-		print('>>> Enter to quit....'),
+		print('>>> Enter to close help.'),
 		raw_input()
 
 	# action
 	def action(self, userInput):
 		u = userInput.strip()
 		lu = u.lower()
-
-		items = self.items
 		workdir = self.workdir
-		loweritems = [i.lower() for i in items]
 
 		if (not u) or (u in ['help', '/?', '/help']):
 			self.printHelp()	
@@ -278,53 +253,33 @@ file -s;'''
 					for i in self.items:
 						f.write('{0}\n'.format(i))
 			os.system(orderfile)
-
 		elif u=='`':
 			self.runLastTask()
 		elif u=='~':
 			self.runLastFile()
-
-		elif u == '..':
-			self.up()
-		elif u == '/':
-			self.top()
 		elif u == '.':
-			self.log=workdir # will replace function -> copy directory path
-		else:
-			if u.isdigit():
-				u = int(u)
-				if 0 < u <= len(items):
-					self.down(items[u-1])
-				else:
-					self.log += 'input out of bound : {input}'.format(input=u)
-			else:
-				if lu in loweritems:
-					i = loweritems.index(lu)
-					u = items[i]
-					self.down(u)
-				else:
-					self.log += 'invalid input : {input}'.format(input=u)
-		
-
+			self.log=workdir # TBD - copy directory path
+ 		else: # Throw any other input to move(), so they can handle it
+			self.move(u)
 
 	# cull
 	def itemculling(self, items):
-		'''item startswith . or _ will cull'''
+		'''Any directory or file starts with . or _ will not display'''
 		culls = [i for i in items if not (i.startswith('.') or i.startswith('_'))]
 		return culls
 
 	def directories(self, items):
-		'''it takes items and return directories'''
-		dirs = sorted([i for i in items if os.path.isdir(self.workdir + '/' + i)])
+		'''It takes current path's items, then only return directories'''
+		dirs = sorted([i for i in items if ospath.isdir(ospath.join(self.workdir,i))])
 		return dirs
 
 	def tasks(self, items):
-		files = [i for i in items if os.path.isfile(self.workdir + '/' + i)]
+		''' check the software we are using, then throw files for other software '''
+		files = [i for i in items if ospath.isfile(ospath.join(self.workdir,i))]
 		tasks = []
-		readExtensions = self.software[self.use]['read']
-		for e in readExtensions:
+		exts = self.software[self.use]['read']
+		for e in exts:
 			tasks += [f for f in files if e in f]
-		# tasks = [i.replace(self.fileprepath()+'.', '') for i in tasks] #  if i.startswith(self.fileprepath())
 		rest = re.compile('[-_.]?v?\d*[.]\w+$')
 		tasks = [rest.sub('', i) for i in tasks]
 		tasks = sorted(list(set(tasks)))
@@ -362,8 +317,32 @@ file -s;'''
 		else:
 			return self.struct.keys()[self.headIndex(head)-1]
 
+	def setHeadData(self, data):
+		self.struct[self.head]=data
+	
+	def clearHeadData(self):
+		self.struct[self.head]=''
 
 	# move or run
+	def move(self, inputstring):
+		lowerinput = inputstring.lower()
+		loweritems = [i.lower() for i in self.items]
+		if inputstring == '..':
+			self.up()
+		elif inputstring == '/':
+			self.top()
+		elif inputstring.isdigit():
+			select = int(inputstring)-1
+			if 0 <= select < len(self.items):
+				self.down(self.items[select])
+			else:
+				self.log += 'invalid number : {0}'.format(inputstring)
+		elif lowerinput in loweritems:
+				i = loweritems.index(lowerinput)
+				self.down(self.items[i])
+		else:
+			self.log += 'invalid input : {0}'.format(inputstring)
+			
 	def top(self):
 		self.head = 'root'
 		self.resetStruct()
@@ -373,7 +352,7 @@ file -s;'''
 		if self.head in self.bypassStruct:
 			while self.head in self.bypassStruct:
 				self.headShift(-1)
-		struct[self.head]=''
+		self.clearHeadData()
 		self.headShift(-1)
 		print(self.head)
 
@@ -385,9 +364,10 @@ file -s;'''
 			self.runRev(dest)
 		else:
 			self.headShift(1)
-			struct[self.head]=dest
+			self.setHeadData(dest)
 			while self.nextHead() in self.bypassStruct:
 				self.headShift(1)
+				self.update() # there are chances to skip update, so force update
 		print(self.head)
 
 	def runTask(self, dir, task):
@@ -418,56 +398,49 @@ file -s;'''
 
 	# new
 	def new(self, name):
-		dest = self.nextHead()
-		if dest == 'show':
-			A, B, C = 'seq/scene/shot', 'scene/shot', 'shot'
-			print('choose one of these types')
-			print('1. show/' + A)
-			print('2. show/' + B)
-			print('3. show/' + C)
-
-			ui = raw_input()
-			try:
-				ui = int(ui)
-				showtype = [A, B, C][ui-1]
-			except :
-				print('your intput is invalid')
-				raise # we should return in a stable ver, but now for debugging, raise it
-			self.newshow(name, showtype)
-
-		elif dest in ['seq', 'scene']:
+		nexthead = self.nextHead()
+		if   nexthead in ['show']:
+			self.newshow(name)
+		elif nexthead in ['seq', 'scene']:
 			self.newdir(name)
-		elif dest == 'shot':
+		elif nexthead in ['shot']:
 			self.newshot(name)
-		elif dest in ['task', 'rev']:
+		elif nexthead in ['task', 'rev']:
 			self.newtask(name)
-
-		# orderfile = ospath.join(self.workdir, self.orderfile)
-		# with open(orderfile, 'a') as f:
-		# 	f.write(name)
-		# 	f.write('\n')
- 
-
 
 	def newdir(self, dirname):
 		nd = ospath.join(self.workdir, dirname)
 		os.mkdir(nd)
 
-	def newshow(self, show, showtype):
-		path = ospath.join(self.workdir, show)
-		os.mkdir(path)
-		print('maketree!!!!!!!!!!!!!!!!!!!!!!!!')
-		maketree.make('show', path)
-		
-		showfile = ospath.join(path, self.structfile)
+	def newshow(self, showname):
+		''' this will make show struct directories and info (.showinfo) file'''
+		A, B, C = 'work/seq/scene/shot', 'work/scene/shot', 'work/shot'
+		print('choose one of these types')
+		print('1. show/' + A)
+		print('2. show/' + B)
+		print('3. show/' + C)
+		userinput = raw_input()
+		if userinput not in ['1', '2', '3']:
+			self.log+='intput invalid, please type 1-3'
+			return
+		else:
+			showtype = [A, B, C][int(userinput)-1]
+		showpath = ospath.join(self.workdir, showname)
+		os.mkdir(showpath)
+		maketree.make('show', showpath)
+		print(showtype, showpath)
+		self.log+=showtype
+		self.log+=showpath
+		self.makeShowInfoFile(showtype, showpath)
 
+	def makeShowInfoFile(self, showtype, showpath):	
+		showfile = ospath.join(showpath, '.showinfo')
 		with open(showfile, 'w') as f:
 			f.write(showtype)
 
 	def newshot(self, shot):
 		path = ospath.join(self.workdir, shot)
 		os.mkdir(path)
-		# os.makedirs(path.replace(self.struct['work'], 'output', 1))
 		maketree.make('shot', path)
 
 	def newtask(self, taskname):
@@ -478,24 +451,30 @@ file -s;'''
 		filepath = ospath.join(self.workdir, filename)
 		shotpath = self.shotpath()
 		renderpath = self.renderpath()
-
-		# # before make script, we have to append deletedStruct to currentStruct so let the follow string formatting won't make error
-		# for s in self.deletedStruct:
-		# 	struct[s]=''
 		startf, endf, fps = 1, 240, 24.0
 
 		initscript = self.software[self.use]['initscript'].format(
-			show=structname('show'), seq=structname('seq'), scene=structname('scene'), shot=structname('shot'), task=taskname,
-			showpath = structpath('show'), seqpath=structpath('seq'), scenepath=structpath('scene'), taskpath=structpath('run'),
-			shotpath=shotpath, renderpath=renderpath, filepath=filepath,
-			fps=24, start=(startf-1)/fps, end=endf/fps)
+			show=structname('show'), 
+			seq=structname('seq'), 
+			scene=structname('scene'), 
+			shot=structname('shot'), 
+			task=taskname,
+			showpath = structpath('show'), 
+			seqpath=structpath('seq'), 
+			scenepath=structpath('scene'), 
+			taskpath=structpath('run'),
+			shotpath=shotpath, 
+			renderpath=renderpath, 
+			filepath=filepath,
+			fps=24, start=(startf-1)/fps, end=endf/fps
+		)
 		scriptfile = ospath.join(self.workdir, '.temp_init')
 		with open(scriptfile, 'w') as f:
 			f.write(initscript)
 		
 		command = self.software[self.use]['batch'] + ' ' + scriptfile
 		# command = self.software[self.use]['batch'].format(filepath=filepath) + ' ' + scriptfile
-		print(command)
+		self.log += command
 		os.system(command)
 		os.remove(scriptfile)
 		self.runFile(filepath)
@@ -609,7 +588,7 @@ def main():
 	# shot = shotdata()
 	while True:
 	# for i in range(1):
-		#shot.update()
+		shot.update()
 		ExportToFile(shot)
 		shot.printMessage()
 		userInput = raw_input()
