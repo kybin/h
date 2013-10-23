@@ -6,6 +6,11 @@ import os.path as path
 import filecmp
 from itertools import count as itercount
 
+def clearScreen():
+	if os.name == 'posix':
+		os.system('clear')
+	elif os.name == 'nt':
+		os.system('cls')
 
 def convertToUnixpath(inputpath):
     return inputpath.replace('\\', '/')

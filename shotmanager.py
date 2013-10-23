@@ -20,7 +20,7 @@ class shotdata:
 		self.part = 'fx'
 		self.user = getUser()
 		self.rootpath = env.ProjectRoot
-		self.workdir = self.rootpath
+		self.workingdir = self.rootpath
 		self.software = {
 			'houdini':
 			{'dir':'scenes', 'read':['hip'], 'write':'hip', 'batch':'hython', 'execute': 'houdini', 
@@ -74,7 +74,6 @@ file -s;'''
 		self.renderdir = 'images'
 		self.structfile = '.showinfo'
 		self.orderfile = '.order'
-		self.runfile = ''
 		self.lastrundir = ''
 		self.lastruntask = ''
 		self.lastrunfile = ''
@@ -114,7 +113,7 @@ file -s;'''
 
 	# update
 	def update(self):
-		''' update status : workdir, dirlists ... '''
+		''' update status : workingdir, dirlists ... '''
 		head = self.head
 		if head == 'root':
 			self.resetStruct()
@@ -125,19 +124,19 @@ file -s;'''
 
 	def updateDir(self):
 		''' Tasks and revs are not a dir, so we have to set our last dir '''
-		idx = min(self.headIndex(), self.struct.keys().index('task')-1)
-		limitedstruct = self.struct.values()[:idx+1]
-		wd = '/'.join(limitedstruct)
-		print(wd)
-		if os.path.isdir(wd):
-			self.workdir = wd
+		struct = self.struct
+		dirindex = min(self.headIndex(), struct.keys().index('run'))
+		workingdir = ospath.join(*struct.values()[:dirindex+1])
+		print(workingdir)
+		if os.path.isdir(workingdir):
+			self.workingdir = workingdir
 		else:
-			raise ValueError("There isn't such a directory. {0}".format(wd))
+			raise ValueError("There isn't such a directory. {0}".format(workingdir))
 
 	def updateItems(self):
 		''' update items (files and directories) in current directory'''
 		head = self.head
-		items = os.listdir(self.workdir)
+		items = os.listdir(self.workingdir)
 		#print(items)
 		#self.log+=items
 		items = self.itemculling(items)
@@ -151,8 +150,8 @@ file -s;'''
 		else:
 			raise KeyError('head is in a danger area! : {0}'.format(head))
 
-		if ospath.isfile(ospath.join(self.workdir, self.orderfile)):
-			orderfile = ospath.join(self.workdir, self.orderfile)
+		if ospath.isfile(ospath.join(self.workingdir, self.orderfile)):
+			orderfile = ospath.join(self.workingdir, self.orderfile)
 			with open(orderfile) as f:
 				lines = f.read().splitlines()
 				for l in lines:
@@ -164,38 +163,24 @@ file -s;'''
 
 	# print
 	def printMessage(self):
-		# os.system('cls')
-		items = [' : '.join(['{0: >4}'.format(idx+1),val]) for idx,val in enumerate(self.items)]
+		filebox.clearScreen()
 		print('='*75)
-		# print('-'*75)
 		print('Shot Manager V{version}'.format(version=self.version).center(75))
-		# print('-'*75)
 		print('user : {0}, part : {1}'.format(self.user, self.part).rjust(75))
 		print('='*75)
-		if self.head != 'root':
-			for s, v in self.struct.items()[1:]: # we don't wanna see root
-				# print(s, self.head)
-				if s != self.head:
-					if s not in self.bypassStruct:
-						print('{0: >8} : {1}'.format(s.upper(), v))
-				else:
-					print('-'*75)
-					print('< {0} : {1} >'.format(s.upper(), v)),
-					if self.nextHead() == 'task':
-						print('- {0}'.format(self.use)),
-					print('\n')
-					print('\n'.join(items))	
-					# if self.lastrunfile:
-					# 	print('-'*75)
-					# 	print('{0: >4} : {1} {2}'.format('`', self.lastruntask, '(### Last Task ###)'))
-					break		
-		else:
-			print('\n'.join(items))			
+
+		for s, v in self.struct.items()[1:self.headIndex()+1]: # we don't wanna see root
+			if s not in self.bypassStruct:
+				print('{0: >8} : {1}'.format(s.upper(), v))
+
+		items = [' : '.join(['{0: >4}'.format(idx+1),val]) for idx,val in enumerate(self.items)]
+		print('-'*75)
+		print('\n'.join(items))			
 		print('-'*75)
 		print('>>>'),
 
 	def printHelp(self):
-		os.system('cls')
+		filebox.clearScreen()
 		print
 		print('-'*75)
 		print('HELP')
@@ -222,7 +207,7 @@ file -s;'''
 	def action(self, userInput):
 		u = userInput.strip()
 		lu = u.lower()
-		workdir = self.workdir
+		workingdir = self.workingdir
 
 		if (not u) or (u in ['help', '/?', '/help']):
 			self.printHelp()	
@@ -246,7 +231,7 @@ file -s;'''
 				print(n)
 				self.new(n)
 		elif u == 'order':
-			orderfile = ospath.join(self.workdir, self.orderfile)
+			orderfile = ospath.join(self.workingdir, self.orderfile)
 			if not ospath.isfile(orderfile):
 				# self.updateItems()
 				with open(orderfile, 'w') as f:
@@ -258,7 +243,7 @@ file -s;'''
 		elif u=='~':
 			self.runLastFile()
 		elif u == '.':
-			self.log=workdir # TBD - copy directory path
+			self.log=workingdir # TBD - copy directory path
  		else: # Throw any other input to move(), so they can handle it
 			self.move(u)
 
@@ -270,12 +255,12 @@ file -s;'''
 
 	def directories(self, items):
 		'''It takes current path's items, then only return directories'''
-		dirs = sorted([i for i in items if ospath.isdir(ospath.join(self.workdir,i))])
+		dirs = sorted([i for i in items if ospath.isdir(ospath.join(self.workingdir,i))])
 		return dirs
 
 	def tasks(self, items):
 		''' check the software we are using, then throw files for other software '''
-		files = [i for i in items if ospath.isfile(ospath.join(self.workdir,i))]
+		files = [i for i in items if ospath.isfile(ospath.join(self.workingdir,i))]
 		tasks = []
 		exts = self.software[self.use]['read']
 		for e in exts:
@@ -359,7 +344,7 @@ file -s;'''
 	def down(self, dest):
 		struct = self.struct
 		if self.nextHead() == 'task':
-			self.runTask(self.workdir, dest)
+			self.runTask(self.workingdir, dest)
 		elif self.nextHead() == 'rev':
 			self.runRev(dest)
 		else:
@@ -375,7 +360,7 @@ file -s;'''
 		flist = sorted([f for f in flist if f.startswith(task)])
 		flist.reverse()
 		lastf = flist[0]
-		lastfpath = ospath.join(self.workdir, lastf)
+		lastfpath = ospath.join(self.workingdir, lastf)
 		self.lastrundir = dir
 		self.lastruntask = task
 		self.lastrunfile = lastfpath
@@ -409,7 +394,7 @@ file -s;'''
 			self.newtask(name)
 
 	def newdir(self, dirname):
-		nd = ospath.join(self.workdir, dirname)
+		nd = ospath.join(self.workingdir, dirname)
 		os.mkdir(nd)
 
 	def newshow(self, showname):
@@ -425,7 +410,7 @@ file -s;'''
 			return
 		else:
 			showtype = [A, B, C][int(userinput)-1]
-		showpath = ospath.join(self.workdir, showname)
+		showpath = ospath.join(self.workingdir, showname)
 		os.mkdir(showpath)
 		maketree.make('show', showpath)
 		print(showtype, showpath)
@@ -439,7 +424,7 @@ file -s;'''
 			f.write(showtype)
 
 	def newshot(self, shot):
-		path = ospath.join(self.workdir, shot)
+		path = ospath.join(self.workingdir, shot)
 		os.mkdir(path)
 		maketree.make('shot', path)
 
@@ -448,7 +433,7 @@ file -s;'''
 		structname = self.structname
 		structpath = self.structpath
 		filename = '.'.join([self.fileprepath(), taskname, 'v101', self.software[self.use]['write']])
-		filepath = ospath.join(self.workdir, filename)
+		filepath = ospath.join(self.workingdir, filename)
 		shotpath = self.shotpath()
 		renderpath = self.renderpath()
 		startf, endf, fps = 1, 240, 24.0
@@ -468,7 +453,7 @@ file -s;'''
 			filepath=filepath,
 			fps=24, start=(startf-1)/fps, end=endf/fps
 		)
-		scriptfile = ospath.join(self.workdir, '.temp_init')
+		scriptfile = ospath.join(self.workingdir, '.temp_init')
 		with open(scriptfile, 'w') as f:
 			f.write(initscript)
 		
@@ -482,7 +467,7 @@ file -s;'''
 
 	# other actions
 	def opendir(self):
-		dir = self.workdir
+		dir = self.workingdir
 		os.system('thunar {dir}'.format(dir=dir))
 
 	def changesoftware(self, sw):
@@ -494,12 +479,12 @@ file -s;'''
 
 	def delete(self, item):
 		''' Move a dir or file to _deleted directory '''
-		itempath = ospath.join(self.workdir, item)
+		itempath = ospath.join(self.workingdir, item)
 		filebox.incBackup(itempath, backupdirname ='_deleted', move=True)
 
 	def omit(self, item):
 		''' Move a dir or file to _omitted directory '''
-		itempath = ospath.join(self.workdir, item)
+		itempath = ospath.join(self.workingdir, item)
 		filebox.incBackup(itempath, backupdirname ='_omitted', move=True)
 
 
@@ -539,7 +524,7 @@ file -s;'''
 		return('_'.join(prepath))
 
 	def shotpath(self):
-		return self.workdir.replace(self.software[self.use]['dir'], '').rstrip('/')
+		return self.workingdir.replace(self.software[self.use]['dir'], '').rstrip('/')
 
 	def renderpath(self):
 		return ospath.join(self.shotpath(), 'images')
@@ -561,7 +546,7 @@ def ImportSetting():
 		raise IOError
 	with open(settingfile, 'r') as f:
 		shotdata = pickle.load(f)
-		if not ospath.isdir(shotdata.workdir):
+		if not ospath.isdir(shotdata.workingdir):
 			raise IOError
 		return shotdata
 
