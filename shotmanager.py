@@ -88,15 +88,17 @@ file -s;'''
 			('root', self.rootpath),
 			('show'	, ''),
 			('work'	, 'work'),
+			# show struct from here
 			('seq'	, ''),
 			('scene', ''),
 			('shot'	, ''),
+			# to here
 			('run', 'scenes'),
 			('task'	, ''),
 			('rev'	, '')
 			])
 		self.head = 'root'
-		self.showStruct = ['show', 'work', 'seq', 'scene', 'shot']
+		self.showStruct = set(['seq', 'scene', 'shot'])
 		self.bypassStruct = ['work','run']
 		self.printStruct = ['show', 'seq', 'scene', 'shot', 'task', 'rev']
 
@@ -109,8 +111,12 @@ file -s;'''
 		print(self.struct['show'])
 		structfile = ospath.join(self.rootpath, self.struct['show'], '.showinfo')
 		with open(structfile) as f:
-			self.showStruct = f.readline().strip('\n').split('/')
-
+			readStruct = set(f.readline().strip('\n').split('/'))
+			delStruct = self.showStruct - readStruct # they are not used so we should delete.
+			for s in delStruct:
+				del self.struct[s]
+				print("{0} deleted".format(s))
+		raw_input()		
 	# update
 	def update(self):
 		''' update status : workingdir, dirlists ... '''
@@ -350,9 +356,9 @@ file -s;'''
 		else:
 			self.headShift(1)
 			self.setHeadData(dest)
+			self.update() # there are chances to skip update, so force update
 			while self.nextHead() in self.bypassStruct:
 				self.headShift(1)
-				self.update() # there are chances to skip update, so force update
 		print(self.head)
 
 	def runTask(self, dir, task):
@@ -399,7 +405,7 @@ file -s;'''
 
 	def newshow(self, showname):
 		''' this will make show struct directories and info (.showinfo) file'''
-		A, B, C = 'work/seq/scene/shot', 'work/scene/shot', 'work/shot'
+		A, B, C = 'seq/scene/shot', 'scene/shot', 'shot'
 		print('choose one of these types')
 		print('1. show/' + A)
 		print('2. show/' + B)
@@ -539,7 +545,7 @@ file -s;'''
 
 
 # Import and Export Settings
-settingfile = ospath.expanduser('~/.shotmanager')
+settingfile = ospath.expanduser('~/.piplrc')
 	
 def ImportSetting():
 	if ospath.getctime(settingfile) < ospath.getmtime(sys.argv[0]):
@@ -565,12 +571,9 @@ def main():
 	try:
 		shot = ImportSetting()
 	except IOError:
-		shot = shotdata() # new shot
+		shot = shotdata()
 	except OSError:
-		shot = shotdata() # new shot
-	# except Error as e:
-	# 	raise(e)
-	# shot = shotdata()
+		shot = shotdata()
 	while True:
 	# for i in range(1):
 		shot.update()
