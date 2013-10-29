@@ -88,11 +88,13 @@ file -s;'''
 			('root', self.rootpath),
 			('show'	, ''),
 			('work'	, 'work'),
-			# show struct from here
+			('shot'	, ''),
+			# -------------------------------------------------
+			# these levels could deleted depends on show struct
 			('seq'	, ''),
 			('scene', ''),
 			('shot'	, ''),
-			# to here
+			# -------------------------------------------------
 			('run', 'scenes'),
 			('task'	, ''),
 			('rev'	, '')
@@ -169,18 +171,22 @@ file -s;'''
 		print('Shot Manager V{version}'.format(version=self.version).center(75))
 		print('user : {0}, part : {1}'.format(self.user, self.part).rjust(75))
 		print('='*75)
+
 		print('{0}'.format(self.workingdir).rjust(75))
 
 		for s, v in self.struct.items()[self.headIndex('show'):self.currentHeadIndex()+1]:
 			if s not in self.bypassStruct:
 				print('{0: >8} : {1}'.format(s.upper(), v))
 
-		#print('-'*75)
 		print('<{0}>'.format(self.nextHead().upper()))
 		items = [' : '.join(['{0: >4}'.format(idx+1),val]) for idx,val in enumerate(self.items)]
 		print('\n'.join(items))			
-
 		print('-'*75)
+
+		if self.log:
+			print(self.log)
+			print('-'*75)
+
 		print('>>>'),
 
 	def printHelp(self):
@@ -250,7 +256,8 @@ file -s;'''
 		elif u=='~':
 			self.runLastFile()
 		elif u == '.':
-			self.log=workingdir # TBD - copy directory path
+			pass # Copy directory path to the clipboard
+		
  		else: # Throw any other input to move(), so they can handle it
 			self.move(u)
 
@@ -328,12 +335,12 @@ file -s;'''
 			if 0 <= select < len(self.items):
 				self.down(self.items[select])
 			else:
-				self.log += 'invalid number : {0}'.format(inputstring)
+				self.appendToLog('invalid number : {0}'.format(inputstring))
 		elif lowerinput in loweritems:
 				i = loweritems.index(lowerinput)
 				self.down(self.items[i])
 		else:
-			self.log += 'invalid input : {0}'.format(inputstring)
+			self.appendToLog('invalid input : {0}'.format(inputstring))
 			
 	def top(self):
 		self.head = 'root'
@@ -381,7 +388,7 @@ file -s;'''
 		if self.lastrundir and self.lastruntask:
 			self.runTask(self.lastrundir, self.lastruntask)
 		else:
-			self.log = 'cannot find last task'
+			self.appendToLog('Could not find last task! Maybe its your first time to use it... or not? :)')
 
 	def runLastFile(self):
 		if self.lastrunfile:
@@ -466,7 +473,7 @@ file -s;'''
 		
 		command = self.software[self.use]['batch'] + ' ' + scriptfile
 		# command = self.software[self.use]['batch'].format(filepath=filepath) + ' ' + scriptfile
-		self.log += command
+		self.appendToLog(command)
 		os.system(command)
 		os.remove(scriptfile)
 		self.runFile(filepath)
@@ -496,6 +503,13 @@ file -s;'''
 		itempath = ospath.join(self.workingdir, item)
 		filebox.incBackup(itempath, backupdirname ='_omitted', move=True)
 
+	def appendToLog(self, comment):
+		if self.log:
+			self.log+='\n'
+		self.log+=comment
+
+	def clearLog(self):
+		self.log=''
 
 	# utility
 	def structname(self, structname):
@@ -582,6 +596,7 @@ def main():
 		shot.update()
 		ExportToFile(shot)
 		shot.printMessage()
+		shot.clearLog()
 		userInput = raw_input()
 		shot.action(userInput)
 
