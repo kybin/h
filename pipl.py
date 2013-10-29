@@ -79,11 +79,11 @@ file -s;'''
 		self.lastrunfile = ''
 		self.items=[]
 		self.log = ''
-		self.resetStruct()
+		self.initStruct()
 
 
 	# struct
-	def resetStruct(self):
+	def initStruct(self):
 		self.struct = OrderedDict([
 			('root', self.rootpath),
 			('show'	, ''),
@@ -102,36 +102,31 @@ file -s;'''
 		self.bypassStruct = ['work','run']
 		self.printStruct = ['show', 'seq', 'scene', 'shot', 'task', 'rev']
 
-	def readCurrentShowInfo(self):
-		'''	Update show struct, there are 3 struct types. 
-		show/work/seq/scene/shot 
-		show/work/scene/shot 
-		show/work/shot
-		'''
-		print(self.struct['show'])
-		structfile = ospath.join(self.rootpath, self.struct['show'], '.showinfo')
-		with open(structfile) as f:
-			readStruct = set(f.readline().strip('\n').split('/'))
-			delStruct = self.showStruct - readStruct # they are not used so we should delete.
-			for s in delStruct:
-				del self.struct[s]
-				print("{0} deleted".format(s))
-		raw_input()		
 	# update
 	def update(self):
 		''' update status : workingdir, dirlists ... '''
 		head = self.head
 		if head == 'root':
-			self.resetStruct()
+			self.initStruct()
 		if head == 'show':
-			self.readCurrentShowInfo() 
+			self.updateShow() 
 		self.updateDir()
 		self.updateItems()
+
+	def updateShow(self):
+		''' reads .showinfo file in the show directory, then delete unused level from self.struct. '''
+		structfile = ospath.join(self.rootpath, self.struct['show'], '.showinfo')
+		with open(structfile) as f:
+			readStruct = set(f.readline().strip('\n').split('/'))
+			delStruct = self.showStruct - readStruct
+			for level in delStruct:
+				del self.struct[level]
+				#print("{0} deleted".format(level))
 
 	def updateDir(self):
 		''' Tasks and revs are not a dir, so we have to set our last dir '''
 		struct = self.struct
-		dirindex = min(self.headIndex(), struct.keys().index('run'))
+		dirindex = min(self.currentHeadIndex(), struct.keys().index('run'))
 		workingdir = ospath.join(*struct.values()[:dirindex+1])
 		print(workingdir)
 		if os.path.isdir(workingdir):
@@ -146,7 +141,7 @@ file -s;'''
 		#print(items)
 		#self.log+=items
 		items = self.itemculling(items)
-		if self.headIndex() <= self.headIndex('shot'):
+		if self.currentHeadIndex() <= self.headIndex('shot'):
 			items = self.directories(items)
 		elif head == 'run':
 			items = self.tasks(items)
@@ -174,14 +169,17 @@ file -s;'''
 		print('Shot Manager V{version}'.format(version=self.version).center(75))
 		print('user : {0}, part : {1}'.format(self.user, self.part).rjust(75))
 		print('='*75)
+		print('{0}'.format(self.workingdir).rjust(75))
 
-		for s, v in self.struct.items()[1:self.headIndex()+1]: # we don't wanna see root
+		for s, v in self.struct.items()[self.headIndex('show'):self.currentHeadIndex()+1]:
 			if s not in self.bypassStruct:
 				print('{0: >8} : {1}'.format(s.upper(), v))
 
+		#print('-'*75)
+		print('<{0}>'.format(self.nextHead().upper()))
 		items = [' : '.join(['{0: >4}'.format(idx+1),val]) for idx,val in enumerate(self.items)]
-		print('-'*75)
 		print('\n'.join(items))			
+
 		print('-'*75)
 		print('>>>'),
 
@@ -284,29 +282,29 @@ file -s;'''
 
 
 	# head - "head" means "Current Level"
-	def headShift(self, shift):
-		self.head = self.struct.keys()[self.headIndex()+shift]
-
-	def headIndex(self, head=None):
-		if not head:
-			head = self.head
+	def headIndex(self, head):
 		return self.struct.keys().index(head)
 
+	def currentHeadIndex(self):
+		return self.headIndex(self.head)
+	
+	def headShift(self, shift):
+		self.head = self.struct.keys()[self.currentHeadIndex()+shift]
+	
+	def currentHead(self):
+		return self.struct.keys()[self.currentHeadIndex()]
+
 	def nextHead(self, head=None):
-		if not head:
-			head = self.head
-		if self.head == 'rev':
+		try:
+			return self.struct.keys()[self.currentHeadIndex()+1]
+		except IndexError:
 			return None
-		else:
-			return self.struct.keys()[self.headIndex(head)+1]
 
 	def prevHead(self, head=None):
-		if not head:
-			head = self.head
-		if self.head == 'root':
+		try:
+			return self.struct.keys()[self.currentHeadIndex()-1]
+		except IndexError:
 			return None
-		else:
-			return self.struct.keys()[self.headIndex(head)-1]
 
 	def setHeadData(self, data):
 		self.struct[self.head]=data
@@ -336,7 +334,7 @@ file -s;'''
 			
 	def top(self):
 		self.head = 'root'
-		self.resetStruct()
+		#self.initStruct()
 
 	def up(self):
 		struct = self.struct
