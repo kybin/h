@@ -227,8 +227,11 @@ file -s;'''
 		elif lu.startswith('user '):
 			self.user = u.split()[1]
 		elif lu.startswith('del '):
-			delitem = u.split()[1]
-			self.delete(delitem)
+			item = u.split()[1]
+			self.delete(item)
+		elif lu.startswith('omit '):
+			item = u.split()[1]
+			self.omit(item)
 		elif lu.startswith('new '):
 			names = u.split()[1:]
 			for n in names:
@@ -484,6 +487,8 @@ file -s;'''
 	def delete(self, item):
 		''' Move a dir or file to _deleted directory '''
 		itempath = ospath.join(self.workingdir, item)
+		print("jump to filebox")
+		raw_input()
 		filebox.incBackup(itempath, backupdirname ='_deleted', move=True)
 
 	def omit(self, item):
