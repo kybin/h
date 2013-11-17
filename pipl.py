@@ -3,13 +3,13 @@
 # standard module 
 import os
 import sys
-import env
 import re
 import os.path as ospath
 import pickle
 import shutil
 import itertools
 # external module
+import env
 import maketree
 import filebox
 from OrderedDict import OrderedDict
@@ -335,12 +335,12 @@ file -s;'''
 			if 0 <= select < len(self.items):
 				self.down(self.items[select])
 			else:
-				self.appendToLog('invalid number : {0}'.format(inputstring))
+				self.writeLog('invalid number : {0}'.format(inputstring))
 		elif lowerinput in loweritems:
 				i = loweritems.index(lowerinput)
 				self.down(self.items[i])
 		else:
-			self.appendToLog('invalid input : {0}'.format(inputstring))
+			self.writeLog('invalid input : {0}'.format(inputstring))
 			
 	def top(self):
 		self.head = 'root'
@@ -388,7 +388,7 @@ file -s;'''
 		if self.lastrundir and self.lastruntask:
 			self.runTask(self.lastrundir, self.lastruntask)
 		else:
-			self.appendToLog('Could not find last task! Maybe its your first time to use it... or not? :)')
+			self.writeLog('Could not find last task! Maybe its your first time to use this program... or not? :)')
 
 	def runLastFile(self):
 		if self.lastrunfile:
@@ -427,7 +427,6 @@ file -s;'''
 		showpath = ospath.join(self.workingdir, showname)
 		os.mkdir(showpath)
 		maketree.make('show', showpath)
-		print(showtype, showpath)
 		self.log+=showtype
 		self.log+=showpath
 		self.makeShowInfoFile(showtype, showpath)
@@ -473,7 +472,7 @@ file -s;'''
 		
 		command = self.software[self.use]['batch'] + ' ' + scriptfile
 		# command = self.software[self.use]['batch'].format(filepath=filepath) + ' ' + scriptfile
-		self.appendToLog(command)
+		self.writeLog(command)
 		os.system(command)
 		os.remove(scriptfile)
 		self.runFile(filepath)
@@ -503,7 +502,7 @@ file -s;'''
 		itempath = ospath.join(self.workingdir, item)
 		filebox.incBackup(itempath, backupdirname ='_omitted', move=True)
 
-	def appendToLog(self, comment):
+	def writeLog(self, comment):
 		if self.log:
 			self.log+='\n'
 		self.log+=comment

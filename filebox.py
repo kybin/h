@@ -1,5 +1,6 @@
 # coding=utf-8
 import os
+import sys
 import re
 import shutil
 import os.path as ospath
@@ -26,11 +27,18 @@ def createdir(inputpath):
 			print('\n'+filepath.directory)
 			os.makedirs(filepath.directory)
 
-def opendir(dirpath):
-	try:
-		os.system('explorer '+dirpath)
-	except:
-		pass
+def opendir(d):
+	if sys.platform=='win32':
+		subprocess.Popen(['start', d], shell=True)
+	elif sys.platform=='darwin':
+		subprocess.Popen(['open', d])
+	else:
+		try:
+			# xdg-open should be supported by recent Linux
+			subprocess.Popen(['xdg-open', d])
+		except OSError:
+			print("unknown system, sorry.")
+			raise OSError
 
 def incBackup(inputpath, backupdirname ='backup', move=False):
 	if not ospath.exists(inputpath):
