@@ -25,12 +25,14 @@ def __checkConflict(treename, treedict, recursionlist=[]):
 	return
 
 
-def __parseTree(treestr):
+def __parseDirTree(treestr):
 	branches = [i.rstrip() for i in treestr.splitlines() if i.strip()]
 	defaultdepth = branches[0].count('\t') # TBD : expand to spaces
 
-	dirs= []
-	tree = []
+	# we will make directories one by one, a tree stores them all
+	# ex) ["/test", "test/tex", "test/geo", "test/geo/obj", ...]
+	dirs=[]
+	tree=[]
 	for b in branches:
 		dirname = b.strip()
 		depth = b.count('\t')-defaultdepth
@@ -49,9 +51,8 @@ def __parseTree(treestr):
 			# means depth jump forward more than 1 step
 			print('please check your tree : {0}'.format(ospath.join(*dirs)))
 			raise IndexError
-
 		tree.append(ospath.join(*dirs))
-		return tree
+	return tree
 
 
 def __parseFile(text):
@@ -86,7 +87,7 @@ def make(treename, dir):
 	
 	treestr = treedict[treename]
 	if treestr:
-		branches = __parseTree(treestr)
+		branches = __parseDirTree(treestr)
 
 		if branches:
 			for b in branches:
