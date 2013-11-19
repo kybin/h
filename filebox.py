@@ -37,13 +37,12 @@ def opendir(d):
 			# xdg-open should be supported by recent Linux
 			subprocess.Popen(['xdg-open', d])
 		except OSError:
-			print("unknown system, sorry.")
-			raise OSError
+			raise OSError("cannot find your file manager, sorry.")
+
 
 def incBackup(inputpath, backupdirname ='backup', move=False):
 	if not ospath.exists(inputpath):
-		print('file not exists : {0}'.format(inputpath))
-		return False
+		raise OSError('file not exists : {0}'.format(inputpath))
 	indir, infile = ospath.split(inputpath)
 	backupdir = ospath.join(indir, backupdirname)
 	backupfile = ospath.join(backupdir, infile)
@@ -82,7 +81,7 @@ def mkdirSilent(d):
 		if err.errno == 17:
 			pass
 		else:
-			print("OS error({0}): {1}".format(e.errno, e.strerror))
+			raise OSError("OS error({0}): {1}".format(e.errno, e.strerror))
 
 
 

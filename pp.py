@@ -9,6 +9,7 @@ import os.path as ospath
 import pickle
 import shutil
 import itertools
+from subprocess import call
 # external module
 import env
 import maketree
@@ -74,7 +75,6 @@ file -s;'''
 		self.use = 'houdini'
 		self.renderdir = 'images'
 		self.structfile = '.showinfo'
-		self.orderfile = '.order'
 		self.lastrundir = ''
 		self.lastruntask = ''
 		self.lastrunfile = ''
@@ -149,29 +149,17 @@ file -s;'''
 
 	def updateItems(self):
 		''' update items (files and directories) in current directory'''
-		head = self.head
 		items = os.listdir(self.workingdir)
-		#print(items)
-		#self.log+=items
 		items = self.itemculling(items)
 		if self.currentHeadIndex() <= self.headIndex('shot'):
 			items = self.directories(items)
-		elif head == 'run':
+		elif self.head == 'run':
 			items = self.tasks(items)
 			self.struct['task']=items
-		elif head == 'task':
+		elif self.head == 'task':
 			items = self.revs(items, self.struct['task'])
 		else:
 			raise KeyError('head is in a danger area! : {0}'.format(head))
-
-		if ospath.isfile(ospath.join(self.workingdir, self.orderfile)):
-			orderfile = ospath.join(self.workingdir, self.orderfile)
-			with open(orderfile) as f:
-				lines = f.read().splitlines()
-				for l in lines:
-					if l not in items:
-						raise ValueError('item does not match with order file. fix or delete `{0}`'.format(orderfile))
-			items = lines
 		self.items = items
 
 
@@ -259,14 +247,6 @@ file -s;'''
 				self.logOff()
 			else:
 				self.writeLog("you can do 'log on' or 'log off'")
-		elif u == 'order':
-			orderfile = ospath.join(self.workingdir, self.orderfile)
-			if not ospath.isfile(orderfile):
-				# self.updateItems()
-				with open(orderfile, 'w') as f:
-					for i in self.items:
-						f.write('{0}\n'.format(i))
-			os.system(orderfile)
 		elif u=='`':
 			self.runLastTask()
 		elif u=='~':
@@ -488,7 +468,7 @@ file -s;'''
 		
 		command = self.software[self.use]['batch'] + ' ' + scriptfile
 		# command = self.software[self.use]['batch'].format(filepath=filepath) + ' ' + scriptfile
-		self.writeLog(command)
+		self.writeLog("running setup script.. : {}".format(command))
 		os.system(command)
 		os.remove(scriptfile)
 		self.runFile(filepath)
