@@ -80,6 +80,7 @@ file -s;'''
 		self.lastrunfile = ''
 		self.items=[]
 		self.log = ''
+		self.showlog=True
 		self.initStruct()
 
 
@@ -89,7 +90,6 @@ file -s;'''
 			('root', self.rootpath),
 			('show'	, ''),
 			('work'	, 'work'),
-			('shot'	, ''),
 			# -------------------------------------------------
 			# these levels could deleted depends on show struct
 			('seq'	, ''),
@@ -109,6 +109,7 @@ file -s;'''
 	def update(self):
 		''' update status : workingdir, dirlists ... '''
 		head = self.head
+		self.writeLog(head)
 		if head == 'root':
 			self.initStruct()
 		if head == 'show':
@@ -117,14 +118,23 @@ file -s;'''
 		self.updateItems()
 
 	def updateShow(self):
-		''' reads .showinfo file in the show directory, then delete unused level from self.struct. '''
+		''' reads .showinfo file in the show directory, then delete unused level. '''
 		structfile = ospath.join(self.rootpath, self.struct['show'], '.showinfo')
+		self.writeLog("{} imported".format(structfile))
+
 		with open(structfile) as f:
-			readStruct = set(f.readline().strip('\n').split('/'))
+			read = f.readline()
+			self.writeLog("reset struct to {}".format(read))
+			readStruct = set(read.strip('\n').split('/'))
+
 			delStruct = self.showStruct - readStruct
+			if delStruct:
+				self.writeLog("{} will be deleted".format(" ,".join(delStruct)))
+			else:
+				self.writeLog("Nothing will be deleted")
+
 			for level in delStruct:
 				del self.struct[level]
-				#print("{0} deleted".format(level))
 
 	def updateDir(self):
 		''' Tasks and revs are not a dir, so we have to set our last dir '''
@@ -184,7 +194,7 @@ file -s;'''
 		print('\n'.join(items))			
 		print('-'*75)
 
-		if self.log:
+		if self.showlog and self.log:
 			print(self.log)
 			print('-'*75)
 
@@ -216,34 +226,39 @@ file -s;'''
 
 	# action
 	def action(self, userInput):
-		u = userInput.strip()
-		lu = u.lower()
-		workingdir = self.workingdir
+		u = userInput.strip().lower() # strip and force change to lower string
 
 		if (not u) or (u in ['help', '/?', '/help']):
 			self.printHelp()	
-		elif lu in ['q', 'quit', 'exit']:
+		elif u in ['q', 'quit', 'exit']:
 			sys.exit('Bye!')
-		elif lu in ['o', 'open']:		
+		elif u in ['o', 'open']:		
 			self.opendir()
-		elif lu.startswith('use '):
+		elif u.startswith('use '):
 			change, sw = u.split(' ')
 			self.changesoftware(sw)
-		elif lu.startswith('part '):
+		elif u.startswith('part '):
 			self.part = u.split()[1]
-		elif lu.startswith('user '):
+		elif u.startswith('user '):
 			self.user = u.split()[1]
-		elif lu.startswith('del '):
+		elif u.startswith('del '):
 			item = u.split()[1]
 			self.delete(item)
-		elif lu.startswith('omit '):
+		elif u.startswith('omit '):
 			item = u.split()[1]
 			self.omit(item)
-		elif lu.startswith('new '):
+		elif u.startswith('new '):
 			names = u.split()[1:]
 			for n in names:
 				print(n)
 				self.new(n)
+		elif u.startswith('log '):
+			if u.split()[1] == 'on':
+				self.logOn()
+			elif u.split()[1] == 'off':
+				self.logOff()
+			else:
+				self.writeLog("you can do 'log on' or 'log off'")
 		elif u == 'order':
 			orderfile = ospath.join(self.workingdir, self.orderfile)
 			if not ospath.isfile(orderfile):
@@ -506,10 +521,16 @@ file -s;'''
 	def writeLog(self, comment):
 		if self.log:
 			self.log+='\n'
-		self.log+=comment
+		self.log+="{}".format(comment)
 
 	def clearLog(self):
 		self.log=''
+	
+	def logOn(self):
+		self.showlog=True
+
+	def logOff(self):
+		self.showlog=False
 
 	# utility
 	def structname(self, structname):
@@ -526,10 +547,6 @@ file -s;'''
 			return ''
 
 		paths = struct.values()[:idx+1]
-		# try:
-		# 	paths[1]='FX' # will removed
-		# except IndexError:
-		# 	pass
 		structpath = []
 		for p in paths:
 			structpath.append(p)
@@ -583,7 +600,6 @@ def getUser():
 		if user:
 			return user
 
-# Start here
 def main():
 	try:
 		shot = ImportSetting()
@@ -592,13 +608,13 @@ def main():
 	except OSError:
 		shot = shotdata()
 	while True:
-	# for i in range(1):
 		shot.update()
 		ExportToFile(shot)
 		shot.printMessage()
 		shot.clearLog()
 		userInput = raw_input()
 		shot.action(userInput)
+		# break
 
 if __name__ == '__main__':
 	main()
