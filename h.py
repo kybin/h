@@ -61,7 +61,7 @@ class shotdata:
 	def update(self):
 		''' update working directory and item list. '''
 		head = self.head
-		self.writeLog(head)
+		#self.writeLog(head)
 		if head == 'root':
 			self.initStruct()
 		if head == 'show':
@@ -443,8 +443,6 @@ class shotdata:
 	def delete(self, item):
 		''' Move items to '_deleted' directory '''
 		itempath = ospath.join(self.workingdir, item)
-		print("jump to filebox")
-		raw_input()
 		filebox.incBackup(itempath, backupdirname ='_deleted', move=True)
 
 	def omit(self, item):
