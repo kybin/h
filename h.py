@@ -1,7 +1,6 @@
 #!/usr/bin/python
 # coding:utf-8
 
-# standard module 
 import os
 import sys
 import re
@@ -10,7 +9,7 @@ import pickle
 import shutil
 import itertools
 from subprocess import call
-# external module
+
 import env
 import maketree
 import filebox
@@ -25,7 +24,7 @@ class shotdata:
 		self.workingdir = self.rootpath
 		self.software = {
 			'houdini':
-			{'dir':'scenes', 'read':['hip'], 'write':'hip', 'batch':'hython', 'execute': 'houdini', 
+			{'dir':'scenes', 'read':['hip'], 'write':'hip', 'batch':'hython', 'execute': 'houdini',
 			'initscript' : '''
 hou.hipFile.clear()
 
@@ -57,10 +56,10 @@ hou.hscript('set -g JOB = {shotpath}')
 hou.hscript('set -g OUT = {renderpath}')
 
 hou.hipFile.save('{filepath}')'''
-			}, 
+			},
 
 			'maya':
-			{'dir':'scenes', 'read':['ma', 'mb'], 'write':'mb', 'batch':'mayabatch.exe -script', 'execute': 'maya.exe', 
+			{'dir':'scenes', 'read':['ma', 'mb'], 'write':'mb', 'batch':'mayabatch.exe -script', 'execute': 'maya.exe',
 			'initscript':'''
 file -rn "{file}";
 file -s;'''
@@ -73,7 +72,7 @@ file -s;'''
 		}
 
 		self.use = 'houdini'
-		self.renderdir = 'images'
+		self.renderdir = 'render'
 		self.structfile = '.showinfo'
 		self.lastrundir = ''
 		self.lastruntask = ''
@@ -107,18 +106,18 @@ file -s;'''
 
 	# update
 	def update(self):
-		''' update status : workingdir, dirlists ... '''
+		''' update working directory and item list. '''
 		head = self.head
 		self.writeLog(head)
 		if head == 'root':
 			self.initStruct()
 		if head == 'show':
-			self.updateShow() 
+			self.updateShow()
 		self.updateDir()
 		self.updateItems()
 
 	def updateShow(self):
-		''' reads .showinfo file in the show directory, then delete unused level. '''
+		''' reads '.showinfo' file in the show directory, checking it's structure, then delete unused level. '''
 		structfile = ospath.join(self.rootpath, self.struct['show'], '.showinfo')
 		self.writeLog("{} imported".format(structfile))
 
@@ -145,7 +144,7 @@ file -s;'''
 		if os.path.isdir(workingdir):
 			self.workingdir = workingdir
 		else:
-			raise ValueError("There isn't such a directory. {0}".format(workingdir))
+			raise ValueError("Cannot find working directory : {0}".format(workingdir))
 
 	def updateItems(self):
 		''' update items (files and directories) in current directory'''
@@ -179,7 +178,7 @@ file -s;'''
 
 		print('<{0}>'.format(self.nextHead().upper()))
 		items = [' : '.join(['{0: >4}'.format(idx+1),val]) for idx,val in enumerate(self.items)]
-		print('\n'.join(items))			
+		print('\n'.join(items))
 		print('-'*75)
 
 		if self.showlog and self.log:
@@ -217,10 +216,10 @@ file -s;'''
 		u = userInput.strip().lower() # strip and force change to lower string
 
 		if (not u) or (u in ['help', '/?', '/help']):
-			self.printHelp()	
+			self.printHelp()
 		elif u in ['q', 'quit', 'exit']:
 			sys.exit('Bye!')
-		elif u in ['o', 'open']:		
+		elif u in ['o', 'open']:
 			self.opendir()
 		elif u.startswith('use '):
 			change, sw = u.split(' ')
@@ -253,7 +252,7 @@ file -s;'''
 			self.runLastFile()
 		elif u == '.':
 			pass # Copy directory path to the clipboard
-		
+
  		else: # Throw any other input to move(), so they can handle it
 			self.move(u)
 
@@ -293,10 +292,10 @@ file -s;'''
 
 	def currentHeadIndex(self):
 		return self.headIndex(self.head)
-	
+
 	def headShift(self, shift):
 		self.head = self.struct.keys()[self.currentHeadIndex()+shift]
-	
+
 	def currentHead(self):
 		return self.struct.keys()[self.currentHeadIndex()]
 
@@ -314,11 +313,11 @@ file -s;'''
 
 	def setHeadData(self, data):
 		self.struct[self.head]=data
-	
+
 	def clearHeadData(self):
 		self.struct[self.head]=''
 
-	# move or run
+	# move
 	def move(self, inputstring):
 		lowerinput = inputstring.lower()
 		loweritems = [i.lower() for i in self.items]
@@ -337,7 +336,7 @@ file -s;'''
 				self.down(self.items[i])
 		else:
 			self.writeLog('invalid input : {0}'.format(inputstring))
-			
+
 	def top(self):
 		self.head = 'root'
 		#self.initStruct()
@@ -365,6 +364,8 @@ file -s;'''
 				self.headShift(1)
 		print(self.head)
 
+
+	# run
 	def runTask(self, dir, task):
 		flist = os.listdir(dir)
 		flist = sorted([f for f in flist if f.startswith(task)])
@@ -427,7 +428,7 @@ file -s;'''
 		self.log+=showpath
 		self.makeShowInfoFile(showtype, showpath)
 
-	def makeShowInfoFile(self, showtype, showpath):	
+	def makeShowInfoFile(self, showtype, showpath):
 		showfile = ospath.join(showpath, '.showinfo')
 		with open(showfile, 'w') as f:
 			f.write(showtype)
@@ -448,24 +449,24 @@ file -s;'''
 		startf, endf, fps = 1, 240, 24.0
 
 		initscript = self.software[self.use]['initscript'].format(
-			show=structname('show'), 
-			seq=structname('seq'), 
-			scene=structname('scene'), 
-			shot=structname('shot'), 
+			show=structname('show'),
+			seq=structname('seq'),
+			scene=structname('scene'),
+			shot=structname('shot'),
 			task=taskname,
-			showpath = structpath('show'), 
-			seqpath=structpath('seq'), 
-			scenepath=structpath('scene'), 
+			showpath = structpath('show'),
+			seqpath=structpath('seq'),
+			scenepath=structpath('scene'),
 			taskpath=structpath('run'),
-			shotpath=shotpath, 
-			renderpath=renderpath, 
+			shotpath=shotpath,
+			renderpath=renderpath,
 			filepath=filepath,
 			fps=24, start=(startf-1)/fps, end=endf/fps
 		)
 		scriptfile = ospath.join(self.workingdir, '.temp_init')
 		with open(scriptfile, 'w') as f:
 			f.write(initscript)
-		
+
 		command = self.software[self.use]['batch'] + ' ' + scriptfile
 		# command = self.software[self.use]['batch'].format(filepath=filepath) + ' ' + scriptfile
 		self.writeLog("running setup script.. : {}".format(command))
@@ -487,14 +488,14 @@ file -s;'''
 			print("there isn't such a software")
 
 	def delete(self, item):
-		''' Move a dir or file to _deleted directory '''
+		''' Move items to '_deleted' directory '''
 		itempath = ospath.join(self.workingdir, item)
 		print("jump to filebox")
 		raw_input()
 		filebox.incBackup(itempath, backupdirname ='_deleted', move=True)
 
 	def omit(self, item):
-		''' Move a dir or file to _omitted directory '''
+		''' Move items to '_omitted' directory '''
 		itempath = ospath.join(self.workingdir, item)
 		filebox.incBackup(itempath, backupdirname ='_omitted', move=True)
 
@@ -505,7 +506,7 @@ file -s;'''
 
 	def clearLog(self):
 		self.log=''
-	
+
 	def logOn(self):
 		self.showlog=True
 
@@ -547,7 +548,7 @@ file -s;'''
 		return self.workingdir.replace(self.software[self.use]['dir'], '').rstrip('/')
 
 	def renderpath(self):
-		return ospath.join(self.shotpath(), 'images')
+		return ospath.join(self.shotpath(), self.renderdir)
 
 	def printHierachy(self):
 		hierachy = []
@@ -558,9 +559,10 @@ file -s;'''
 
 
 
+
 # Import and Export Settings
 settingfile = ospath.expanduser('~/.piplrc')
-	
+
 def ImportSetting():
 	if ospath.getctime(settingfile) < ospath.getmtime(sys.argv[0]):
 		raise IOError
@@ -584,6 +586,7 @@ def main():
 	try:
 		shot = ImportSetting()
 	except IOError:
+		# Code changed after setting file was created. We should make new one.
 		shot = shotdata()
 	except OSError:
 		shot = shotdata()
