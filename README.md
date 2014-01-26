@@ -1,4 +1,4 @@
-vfx-pipl
+H - houdini shot manager
 ========
 
-nowdays mainly developing shotmanager
+command line houdini shot manager
