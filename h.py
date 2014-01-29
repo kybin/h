@@ -300,8 +300,8 @@ class shotdata:
 			while self.head in self.bypassStruct:
 				self.headShift(-1)
 		self.clearHeadData()
-		self.headShift(-1)
-		print(self.head)
+		if self.head != 'root':
+			self.headShift(-1)
 
 	def down(self, dest):
 		struct = self.struct
