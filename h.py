@@ -5,24 +5,25 @@ import os
 import sys
 import re
 import os.path as ospath
+import time
 import pickle
 import shutil
 import itertools
 from subprocess import call
 
-import env
+#import env
 import maketree
 import filebox
 import softwareinfo
 from OrderedDict import OrderedDict
 
 class shotdata:
-	def __init__(self):
+	def __init__(self, user, part, rootpath):
 		self.version = '0.02'
-		self.part = 'fx'
-		self.user = getUser()
-		self.rootpath = env.ProjectRoot
-		self.workingdir = self.rootpath
+		self.part = part
+		self.user = user
+		self.rootpath = rootpath
+		self.workingdir = rootpath
 		self.software = softwareinfo.softwareinfo
 		self.use = 'houdini'
 		self.renderdir = 'render'
@@ -223,13 +224,19 @@ class shotdata:
 	def tasks(self, items):
 		''' check the software we are using, then throw files for other software '''
 		files = [i for i in items if ospath.isfile(ospath.join(self.workingdir,i))]
-		tasks = []
+		validFiles = [] # matched file for software user currently use.
+
 		exts = self.software[self.use]['read']
 		for e in exts:
-			tasks += [f for f in files if e in f]
+			validFiles += [f for f in files if e in f]
+
 		rest = re.compile('[-_.]?v?\d*[.]\w+$')
-		tasks = [rest.sub('', i) for i in tasks]
-		tasks = sorted(list(set(tasks)))
+		tasksAndOthers = [rest.sub('', i) for i in validFiles]
+		tasksAndOthers = sorted(list(set(tasksAndOthers)))
+
+		shotpath = self.fileprepath()
+		tasks = [t[len(shotpath)+1:] for t in tasksAndOthers if t.startswith(shotpath)]
+
 		return tasks
 
 	def revs(self, items, task):
@@ -321,7 +328,8 @@ class shotdata:
 	# run
 	def runTask(self, dir, task):
 		flist = os.listdir(dir)
-		flist = sorted([f for f in flist if f.startswith(task)])
+		shot = self.fileprepath()
+		flist = sorted([f for f in flist if f.startswith(shot+'.'+task)])
 		flist.reverse()
 		lastf = flist[0]
 		lastfpath = ospath.join(self.workingdir, lastf)
@@ -512,7 +520,7 @@ class shotdata:
 
 
 # Import and Export Settings
-settingfile = ospath.expanduser('~/.piplrc')
+settingfile = ospath.expanduser('~/.hrc')
 
 def ImportSetting():
 	if ospath.getctime(settingfile) < ospath.getmtime(sys.argv[0]):
@@ -533,14 +541,51 @@ def getUser():
 		if user:
 			return user
 
+def newH():
+	print("Hi, is it your first time to use H?")
+	print("I will ask some informations")
+
+	defaultuser = getUser()
+	user = raw_input("What's your name? [{0}] : ".format(defaultuser))
+	if user == '':
+		user = defaultuser
+
+	part = raw_input("Do you have a part? : ")
+
+	while True:
+		defaultdir = '~/PROJECTS'
+		rootdir = raw_input("It will create root of projects directory. Where should it be? [{0}] : ".format(defaultdir))
+		if rootdir == '':
+			rootdir = defaultdir
+		rootdir = ospath.expanduser(rootdir)
+
+		try:
+			os.mkdir(rootdir)
+			print("Created : {0}".format(rootdir))
+			break
+		except:
+			if ospath.isdir(rootdir):
+				merge = raw_input("It already created, do you want merge with it? [yes/NO] : ")
+				if merge == 'yes':
+					# We are done. Break loop.
+					break
+				else:
+					print('I will treat it as NO.')
+					continue
+			else:
+				raise
+	print("Where come to H!")
+	time.sleep(1)
+	shot = shotdata(user, part, rootdir)
+	return shot
+
+
 def main():
 	try:
 		shot = ImportSetting()
-	except IOError:
-		# Code changed after setting file was created. We should make new one.
-		shot = shotdata()
-	except OSError:
-		shot = shotdata()
+	except:
+		shot = newH()
+
 	while True:
 		shot.update()
 		ExportToFile(shot)
